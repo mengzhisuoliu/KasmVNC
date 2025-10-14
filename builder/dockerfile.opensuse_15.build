@@ -47,7 +47,8 @@ RUN zypper install -ny \
   xorg-x11-server-sdk \
   xorg-x11-util-devel \
   zlib-devel \
-  libva-devel
+  libva-devel \
+  intel-media-driver
 
 RUN groupadd -g 1000 docker && \
   useradd -u 1000 -g docker docker
