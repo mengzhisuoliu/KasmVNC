@@ -32,7 +32,6 @@ class FFMPEGVAAPIEncoder final : public VideoEncoder {
     FFmpeg::FrameGuard hw_frame_guard;
     FFmpeg::PacketGuard pkt_guard;
     FFmpeg::ContextGuard ctx_guard;
-    FFmpeg::SwsContextGuard sws_guard;
     FFmpeg::BufferGuard hw_device_ctx_guard;
     FFmpeg::BufferGuard hw_frames_ref_guard;
 

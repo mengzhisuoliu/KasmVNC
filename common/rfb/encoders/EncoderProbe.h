@@ -18,7 +18,7 @@
 #pragma once
 
 #include <vector>
-#include "KasmVideoConstants.h"
+#include <span>
 #include "SupportedVideoEncoders.h"
 #include "rfb/ffmpeg.h"
 
@@ -29,8 +29,14 @@ namespace rfb::video_encoders {
         std::string drm_device_path;
         FFmpeg &ffmpeg;
 
+        struct EncoderCandidate {
+            KasmVideoEncoders::Encoder encoder;
+            AVCodecID codec_id;
+            AVHWDeviceType hw_type;
+        };
+
         explicit EncoderProbe(FFmpeg &ffmpeg, const std::vector<std::string_view> &parsed_encoders, const char *dri_node);
-        KasmVideoEncoders::Encoders probe(const char *dri_node);
+        KasmVideoEncoders::Encoders probe(const char *dri_node, std::span<EncoderCandidate> candidates);
 
     public:
         EncoderProbe(const EncoderProbe &) = delete;

@@ -152,6 +152,14 @@ else ()
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${TBB_LIBRARIES})
 endif ()
 
+if (ENABLE_LIBYUV)
+    find_library(LIBYUV_LIBRARY NAMES yuv)
+    #pkg_check_modules(LIBYUV libyuv)
+    if (LIBYUV_FOUND)
+        set(RFB_LIBRARIES ${RFB_LIBRARIES} ${LIBYUV_LIBRARY})
+    endif ()
+endif ()
+
 add_library(rfb STATIC ${RFB_SOURCES})
 
 target_include_directories(rfb PRIVATE
@@ -163,6 +171,7 @@ target_include_directories(rfb PRIVATE
         ${FFMPEG_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
         ${CPUID_INCLUDE_DIRS}
+        ${LIBYUV_INCLUDE_DIR}
 )
 
 set(RFB_LIBRARIES ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRARIES} ${FMT_LIBRARIES} ${VIDEO_ACCELERATION_LIBRARIES})

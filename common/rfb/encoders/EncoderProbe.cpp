@@ -1,5 +1,5 @@
 /* Copyright (C) 2025 Kasm.  All Rights Reserved.
-*
+ *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,11 +17,12 @@
  */
 #include "EncoderProbe.h"
 #include <fcntl.h>
+#include <rfb/LogWriter.h>
 #include <string>
 #include <unistd.h>
 #include <vector>
 #include "KasmVideoConstants.h"
-#include <rfb/LogWriter.h>
+#include "KasmVideoEncoders.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -32,24 +33,6 @@ extern "C" {
 
 namespace rfb::video_encoders {
     static LogWriter vlog("EncoderProbe");
-
-    struct EncoderCandidate {
-        KasmVideoEncoders::Encoder encoder;
-        AVCodecID codec_id;
-        AVHWDeviceType hw_type;
-    };
-
-    static std::array<EncoderCandidate, 6> candidates = {
-        {
-         //{KasmVideoEncoders::Encoder::h264_nvenc, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_VAAPI}
-            //{KasmVideoEncoders::Encoder::av1_vaapi, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_VAAPI},
-            //{KasmVideoEncoders::Encoder::hevc_vaapi, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_VAAPI}, // h265
-            EncoderCandidate{KasmVideoEncoders::Encoder::h264_ffmpeg_vaapi, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_VAAPI},
-         // EncoderCandidate{KasmVideoEncoders::Encoder::h264_software, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_NONE}
-            //{KasmVideoEncoders::Encoder::av1_software, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_NONE},
-            //{KasmVideoEncoders::Encoder::h265_software, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_NONE},
-        }
-    };
 
     EncoderProbe::EncoderProbe(FFmpeg &ffmpeg_, const std::vector<std::string_view> &parsed_encoders, const char *dri_node) :
         ffmpeg(ffmpeg_) {
@@ -69,7 +52,18 @@ namespace rfb::video_encoders {
             const auto encoders = SupportedVideoEncoders::map_encoders(parsed_encoders);
             debug_encoders("CLI-specified video codecs", encoders);
 
-            available_encoders = probe(dri_node);
+            static std::array<EncoderCandidate, 4> candidates = {
+                {
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_ffmpeg_vaapi, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_VAAPI},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_VAAPI},
+                    // EncoderCandidate{KasmVideoEncoders::Encoder::av1_ffmpeg_vaapi, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_VAAPI},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_software, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_NONE},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_software, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_NONE},
+                    // EncoderCandidate{KasmVideoEncoders::Encoder::av1_software, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_NONE},
+                }
+            };
+
+            available_encoders = probe(dri_node, candidates);
             debug_encoders("Available encoders", available_encoders);
 
             available_encoders = SupportedVideoEncoders::filter_available_encoders(encoders, available_encoders);
@@ -83,7 +77,7 @@ namespace rfb::video_encoders {
             best_encoder = available_encoders.front();
     }
 
-    KasmVideoEncoders::Encoders EncoderProbe::probe(const char *dri_node) {
+    KasmVideoEncoders::Encoders EncoderProbe::probe(const char *dri_node, std::span<EncoderCandidate> candidates) {
         KasmVideoEncoders::Encoders result{};
         for (const auto &encoder_candidate: candidates) {
             const AVCodec *codec = ffmpeg.avcodec_find_encoder_by_name(KasmVideoEncoders::to_string(encoder_candidate.encoder));

@@ -23,13 +23,13 @@
 #include "EncoderProbe.h"
 #include "rfb/LogWriter.h"
 
-extern "C" {
-#include <libavutil/opt.h>
-}
-
+#include "EncoderConfiguration.h"
 #include "KasmVideoConstants.h"
 #include "rfb/encodings.h"
 #include <rfb/encoders/utils.h>
+#if defined LIBYUV_CONVERSION
+#include <libyuv.h>
+#endif
 
 static rfb::LogWriter vlog("FFMPEGVAAPIEncoder");
 
@@ -91,6 +91,7 @@ namespace rfb {
         ctx->delay = 0;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
+//TODO
         if (ffmpeg.av_opt_set(ctx->priv_data, "async_depth", "1", 0) < 0) {
             vlog.info("Cannot set async_depth");
         }
@@ -163,15 +164,14 @@ namespace rfb {
             vlog.error("Failed to open codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
-
-        auto *sws_ctx = ffmpeg.sws_getContext(
-            width, height, AV_PIX_FMT_RGB32, params.width, params.height, AV_PIX_FMT_NV12, SWS_BILINEAR, nullptr, nullptr, nullptr);
-        if (!sws_ctx) {
-            vlog.error("Could not initialize the conversion context");
-            return false;
-        }
-
-        sws_guard.reset(sws_ctx);
+#if defined(FFMPEG_FILTER)
+        const char* filters = "format=nv12,hwupload";  // Or "scale_vaapi=format=nv12" for explicit VAAPI scaler
+        ffmpeg.avfilter_graph_parse_ptr(filter_graph, filters, &inputs, &outputs, nullptr);
+        ffmpeg.av_buffersrc_add_frame_flags(buffersrc_ctx, rgb_frame, AV_BUFFERSRC_FLAG_PUSH);
+        AVFrame* hw_frame = av_frame_alloc();
+        ffmpeg.av_buffersink_get_frame_flags(buffersink_ctx, hw_frame, AV_BUFFERSINK_FLAG_NO_REQUEST);
+        // ffmpeg.avcodec_send_frame(enc_ctx, hw_frame);
+#endif
 
         return true;
     }
@@ -217,14 +217,21 @@ namespace rfb {
             frame->pict_type = AV_PICTURE_TYPE_NONE;
         }
 
-        const uint8_t *src_data[1] = {buffer};
-        const int src_line_size[1] = {stride * bpp}; // RGB has bpp bytes per pixel
+        const int src_stride_bytes = stride * bpp;
+
+        vlog.debug("render(): width=%d, height=%d, dst_width=%d, dst_height=%d, stride=%d pixels, stride_bytes=%d, bpp=%d",
+                   width, height, dst_width, dst_height, stride, src_stride_bytes, bpp);
 
         int err{};
-        if (err = ffmpeg.sws_scale(sws_guard.get(), src_data, src_line_size, 0, height, frame->data, frame->linesize); err < 0) {
-            vlog.error("Error (%s) while scaling image. Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
+
+#if defined(LIBYUV_CONVERSION)
+        if (err = libyuv::ARGBToNV12(buffer, src_stride_bytes, frame->data[0], frame->linesize[0],
+            frame->data[1], frame->linesize[1], dst_width, dst_height); err != 0) {
+            vlog.error("libyuv::ARGBToNV12 failed with code: %d", err);
             return false;
         }
+#endif
+
 
         frame->pts = pts++;
 

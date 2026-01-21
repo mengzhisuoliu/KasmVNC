@@ -26,6 +26,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#include <libavfilter/avfilter.h>
 }
 
 #define STR_HELPER(x) #x
@@ -138,6 +139,10 @@ class FFmpeg final {
     using avcodec_close_func = int (*)(AVCodecContext *avctx);
     using av_codec_is_encoder_func = int (*)(const AVCodec *codec);
 
+    // libavfilter
+    using avfilter_graph_parse_ptr_func = int (*)(AVFilterGraph *graph, const char *filters, AVFilterInOut **inputs,
+        AVFilterInOut **outputs, void *log_ctx);
+
     struct DlHandler {
         void operator()(void *handle) const {
             dlclose(handle);
@@ -196,10 +201,14 @@ class FFmpeg final {
     avcodec_close_func avcodec_close_f{};
     av_codec_is_encoder_func av_codec_is_encoder_f{};
 
+    // libavfilter
+    avfilter_graph_parse_ptr_func avfilter_graph_parse_ptr_f{};
+
     DlHandlerGuard libavformat{};
     DlHandlerGuard libavutil{};
     DlHandlerGuard libswscale{};
     DlHandlerGuard libavcodec{};
+    DlHandlerGuard libavfilter{};
 
     FFmpeg();
     ~FFmpeg() = default;
