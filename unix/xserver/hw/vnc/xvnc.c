@@ -891,7 +891,6 @@ vfbInstallColormap(ColormapPtr pmap)
     if (pmap != oldpmap)
     {
 	int entries;
-	VisualPtr pVisual;
 	Pixel *     ppix;
 	xrgb *      prgb;
 	xColorItem *defs;
@@ -908,7 +907,7 @@ vfbInstallColormap(ColormapPtr pmap)
 	WalkTree(pmap->pScreen, TellGainedMap, (char *)&pmap->mid);
 
 	entries = pmap->pVisual->ColormapEntries;
-	pVisual = pmap->pVisual;
+	VisualPtr pVisual = pmap->pVisual;
 
 	ppix = (Pixel *)calloc(entries, sizeof(Pixel));
 	prgb = (xrgb *)calloc(entries, sizeof(xrgb));
