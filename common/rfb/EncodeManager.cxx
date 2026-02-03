@@ -486,23 +486,15 @@ bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, 
         return false;
 
     if (screen_encoder_manager->get_encoder() != conn->cp.encoder) {
-        delete encoders[encoderKasmVideo];
-
-        screen_encoder_manager = new ScreenEncoderManager(ffmpeg,
-            conn->cp.encoder,
+        screen_encoder_manager->clear();
+        screen_encoder_manager->set_params(conn->cp.encoder,
             encoder_probe.get_available_encoders(),
-            conn,
             encoder_probe.get_drm_device_path(),
             {0,
                 0,
                 static_cast<uint8_t>(Server::frameRate),
                 static_cast<uint8_t>(Server::groupOfPicture),
                 static_cast<uint8_t>(Server::videoQualityCRFCQP)});
-
-        if (!screen_encoder_manager)
-            return false;
-
-        encoders[encoderKasmVideo] = screen_encoder_manager;
     }
 
     if (!screen_encoder_manager->sync_layout(layout, changed))

@@ -92,6 +92,10 @@ namespace rfb {
         ScreenEncoderManager(ScreenEncoderManager &&) = delete;
         ScreenEncoderManager &operator=(ScreenEncoderManager &&) = delete;
 
+        void clear();
+        void set_params(KasmVideoEncoders::Encoder encoder, const std::vector<KasmVideoEncoders::Encoder> &encoders,
+            const char *dri_node_, VideoEncoderParams params);
+
         bool sync_layout(const ScreenSet &layout, const Region &region);
         [[nodiscard]] KasmVideoEncoders::Encoder get_encoder() const {
             return base_video_encoder;

@@ -45,7 +45,26 @@ namespace rfb {
     ScreenEncoderManager<T>::~ScreenEncoderManager() {
         for (uint8_t i = 0; i < get_screen_count(); ++i)
             remove_screen(i);
-    };
+    }
+
+    template<uint8_t T>
+    void ScreenEncoderManager<T>::clear() {
+        current_params = {};
+        base_video_encoder = KasmVideoEncoders::Encoder::unavailable;
+        available_encoders.clear();
+        dri_node = nullptr;
+        screens_to_refresh.clear();
+    }
+
+    template<uint8_t T>
+    void ScreenEncoderManager<T>::set_params(KasmVideoEncoders::Encoder encoder,
+        const std::vector<KasmVideoEncoders::Encoder> &encoders, const char *dri_node_, VideoEncoderParams params) {
+        base_video_encoder = encoder;
+        available_encoders = encoders;
+        dri_node = dri_node_;
+        current_params = params;
+    }
+
 
     template<uint8_t T>
     VideoEncoder *ScreenEncoderManager<T>::add_encoder(const Screen &layout) const {
