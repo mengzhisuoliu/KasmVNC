@@ -43,8 +43,7 @@ namespace rfb {
 
     template<uint8_t T>
     ScreenEncoderManager<T>::~ScreenEncoderManager() {
-        for (uint8_t i = 0; i < get_screen_count(); ++i)
-            remove_screen(i);
+        clear_screens();
     }
 
     template<uint8_t T>
@@ -54,6 +53,7 @@ namespace rfb {
         available_encoders.clear();
         dri_node = nullptr;
         screens_to_refresh.clear();
+        clear_screens();
     }
 
     template<uint8_t T>
@@ -97,7 +97,6 @@ namespace rfb {
         screens[index] = {layout, encoder, true};
         head = std::min(head, index);
         ++count;
-        rebuild_screens_to_refresh();
 
         return true;
     }
@@ -115,7 +114,6 @@ namespace rfb {
 
             mask &= ~(1 << index);
             --count;
-            rebuild_screens_to_refresh();
         }
         screens[index] = {};
     }
@@ -135,6 +133,12 @@ namespace rfb {
     }
 
     template<uint8_t T>
+    void ScreenEncoderManager<T>::clear_screens() {
+        for (uint8_t i = 0; i < get_screen_count(); ++i)
+            remove_screen(i);
+    }
+
+    template<uint8_t T>
     ScreenEncoderManager<T>::stats_t ScreenEncoderManager<T>::get_stats() const {
         return stats;
     }
@@ -142,6 +146,8 @@ namespace rfb {
     template<uint8_t T>
     bool ScreenEncoderManager<T>::sync_layout(const ScreenSet &layout, const Region &region) {
         const auto bounds = region.get_bounding_rect();
+
+        const auto old_mask = mask;
 
         for (uint8_t i = 0; i < static_cast<uint8_t>(layout.num_screens()); ++i) {
             const auto &screen = layout.screens[i];
@@ -155,12 +161,13 @@ namespace rfb {
                 remove_screen(id);
                 if (!add_screen(id, screen))
                     return false;
-            }
-
-            if (screen.dimensions.overlaps(bounds)) {
+            } else if (screen.dimensions.overlaps(bounds)) {
                 screens[id].dirty = true;
             }
         }
+
+        if (old_mask != mask || (mask > 0 && screens_to_refresh.empty()))
+            rebuild_screens_to_refresh();
 
         return true;
     }
@@ -191,7 +198,7 @@ namespace rfb {
             return;
         }
 
-        const auto send_frame = [this, &bpp, out_conn, pb, &palette](const screen_t &screen) {
+        const auto send_frame = [this, &bpp, out_conn, pb, &palette](screen_t &screen) {
             ++stats.rects;
             const auto &rect = screen.layout.dimensions;
             const auto area = rect.area();
@@ -206,6 +213,8 @@ namespace rfb {
             conn->writer()->startRect(rect, encoder->encoding);
             encoder->writeRect(pb, palette);
             conn->writer()->endRect();
+
+            screen.dirty = false;
 
             const auto after = out_conn->length();
             stats.bytes += after - before;
@@ -223,7 +232,6 @@ namespace rfb {
                 auto &screen = screens[index];
                 if (screen.dirty) {
                     send_frame(screen);
-                    screen.dirty = false;
                 }
             }
         } else {

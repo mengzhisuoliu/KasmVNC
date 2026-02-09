@@ -56,6 +56,7 @@ namespace rfb {
         [[nodiscard]] size_t get_screen_count() const;
         void remove_screen(uint8_t index);
         void rebuild_screens_to_refresh();
+        void clear_screens();
 
     public:
         struct stats_t {
