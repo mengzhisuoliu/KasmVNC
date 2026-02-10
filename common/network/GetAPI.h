@@ -20,10 +20,7 @@
 #define __NETWORK_GET_API_H__
 
 #include <kasmpasswd.h>
-#include <pthread.h>
-#include <network/GetAPIEnums.h>
 #include <rfb/PixelBuffer.h>
-#include <rfb/PixelFormat.h>
 #include <stdint.h>
 #include <map>
 #include <string>
@@ -106,6 +103,7 @@ namespace network {
     const char *passwdfile;
 
     pthread_mutex_t screenMutex;
+    rfb::PixelBuffer *pb;
     rfb::ManagedPixelBuffer screenPb;
     uint16_t screenW, screenH;
     uint64_t screenHash;

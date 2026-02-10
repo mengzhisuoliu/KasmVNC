@@ -20,6 +20,7 @@
 
 #include <inttypes.h>
 #include <network/GetAPI.h>
+#include <network/GetAPIEnums.h>
 #include <network/jsonescape.h>
 #include <rfb/ConnParams.h>
 #include <rfb/EncodeManager.h>
@@ -27,7 +28,6 @@
 #include <rfb/JpegCompressor.h>
 #include <rfb/xxhash.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string>
 #include <utility>
 
@@ -55,7 +55,7 @@ static const struct TightJPEGConfiguration conf[10] = {
 };
 
 GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_),
-					screenW(0), screenH(0), screenHash(0),
+					pb(nullptr), screenW(0), screenH(0), screenHash(0),
 					cachedW(0), cachedH(0), cachedQ(0),
 					ownerConnected(0), activeUsers(0),
 					sessionsInfo( "{\"users\":[]}"){
@@ -70,34 +70,11 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 }
 
 // from main thread
-void GetAPIMessager::mainUpdateScreen(rfb::PixelBuffer *pb) {
+void GetAPIMessager::mainUpdateScreen(rfb::PixelBuffer *pb_) {
 	if (pthread_mutex_trylock(&screenMutex))
 		return;
 
-	int stride;
-	const rdr::U8 * const buf = pb->getBuffer(pb->getRect(), &stride);
-
-	if (pb->width() != screenW || pb->height() != screenH) {
-		screenHash = 0;
-		screenW = pb->width();
-		screenH = pb->height();
-		screenPb.setPF(pb->getPF());
-		screenPb.setSize(screenW, screenH);
-
-		cachedW = cachedH = cachedQ = 0;
-		cachedJpeg.clear();
-	}
-
-	const uint64_t newHash = XXH64(buf, pb->area() * 4, 0);
-	if (newHash != screenHash) {
-		cachedW = cachedH = cachedQ = 0;
-		cachedJpeg.clear();
-
-		screenHash = newHash;
-		rdr::U8 *rw = screenPb.getBufferRW(screenPb.getRect(), &stride);
-		memcpy(rw, buf, screenW * screenH * 4);
-		screenPb.commitBufferRW(screenPb.getRect());
-	}
+    pb = pb_;
 
 	pthread_mutex_unlock(&screenMutex);
 }
@@ -188,24 +165,53 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	const uint8_t q, const bool dedup,
 	uint32_t &len, uint8_t *staging) {
 
-	uint8_t *ret = NULL;
-	len = 0;
+    int stride;
 
-	if (w > screenW)
-		w = screenW;
-	if (h > screenH)
-		h = screenH;
+    if (!pb)
+        return nullptr;
 
-	if (!screenW || !screenH)
-		vlog.error("Screenshot requested but no screenshot exists (screen hasn't been viewed)");
+    uint8_t *ret = nullptr;
+    len = 0;
 
-	if (!w || !h || q > 9 || !staging)
-		return NULL;
+    if (pthread_mutex_lock(&screenMutex))
+        return nullptr;
 
-	if (pthread_mutex_lock(&screenMutex))
-		return NULL;
+    const rdr::U8 *buf = pb->getBuffer(pb->getRect(), &stride);
 
-	if (w == cachedW && h == cachedH && q == cachedQ) {
+    if (pb->width() != screenW || pb->height() != screenH) {
+        screenHash = 0;
+        screenW = pb->width();
+        screenH = pb->height();
+        screenPb.setPF(pb->getPF());
+        screenPb.setSize(screenW, screenH);
+
+        cachedW = cachedH = cachedQ = 0;
+        cachedJpeg.clear();
+    }
+
+    const uint64_t newHash = XXH64(buf, pb->area() * 4, 0);
+    if (newHash != screenHash) {
+        cachedW = cachedH = cachedQ = 0;
+        cachedJpeg.clear();
+
+        screenHash = newHash;
+        rdr::U8 *rw = screenPb.getBufferRW(screenPb.getRect(), &stride);
+        memcpy(rw, buf, screenW * screenH * 4);
+        screenPb.commitBufferRW(screenPb.getRect());
+    }
+
+    if (w > screenW)
+        w = screenW;
+    if (h > screenH)
+        h = screenH;
+
+    if (!screenW || !screenH)
+        vlog.error("Screenshot requested but no screenshot exists (screen hasn't been viewed)");
+
+    if (!w || !h || q > 9 || !staging)
+        return nullptr;
+
+    if (w == cachedW && h == cachedH && q == cachedQ) {
 		if (dedup) {
 			// Return the hash of the unchanged image
 			sprintf((char *) staging, "%" PRIx64, screenHash);
@@ -222,13 +228,11 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	} else {
 		// Encode the new JPEG, cache it
 		JpegCompressor jc;
-		int quality, subsampling;
 
-		quality = conf[q].quality;
-		subsampling = conf[q].subsampling;
+	    int quality = conf[q].quality;
+		int subsampling = conf[q].subsampling;
 
 		jc.clear();
-		int stride;
 
 		if (w != screenW || h != screenH) {
 			float xdiff = w / (float) screenW;
@@ -239,7 +243,7 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 			const uint16_t newh = screenH * diff;
 
 			const PixelBuffer *scaled = progressiveBilinearScale(&screenPb, neww, newh, diff);
-			const rdr::U8 * const buf = scaled->getBuffer(scaled->getRect(), &stride);
+			buf = scaled->getBuffer(scaled->getRect(), &stride);
 
 			jc.compress(buf, stride, scaled->getRect(),
 					scaled->getPF(), quality, subsampling);
@@ -251,7 +255,7 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 
 			vlog.info("Returning scaled screenshot");
 		} else {
-			const rdr::U8 * const buf = screenPb.getBuffer(screenPb.getRect(), &stride);
+			buf = screenPb.getBuffer(screenPb.getRect(), &stride);
 
 			jc.compress(buf, stride, screenPb.getRect(),
 					screenPb.getPF(), quality, subsampling);
@@ -348,8 +352,7 @@ uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
 
 	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
 	bool found = false;
-	unsigned s;
-	for (s = 0; s < set->num; s++) {
+	for (unsigned s = 0; s < set->num; s++) {
 		if (!strcmp(set->entries[s].user, name)) {
 			set->entries[s].user[0] = '\0';
 			found = true;
@@ -402,8 +405,7 @@ uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 
 	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
 	bool found = false;
-	unsigned s;
-	for (s = 0; s < set->num; s++) {
+	for (unsigned s = 0; s < set->num; s++) {
 		if (!strcmp(set->entries[s].user, name)) {
 			if (mask & USER_UPDATE_READ_MASK)
 				set->entries[s].read = read;
@@ -484,7 +486,6 @@ void GetAPIMessager::netGetUsers(const char **outptr) {
     { "user": "username", "write": true, "owner": true }
 ]
 */
-	char *buf;
 	char escapeduser[USERNAME_LEN * 2];
 
 	if (pthread_mutex_lock(&userMutex)) {
@@ -494,13 +495,12 @@ void GetAPIMessager::netGetUsers(const char **outptr) {
 
 	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
 
-	buf = (char *) calloc(set->num, 80);
+	auto *buf = (char *) calloc(set->num, 80);
 	FILE *f = fmemopen(buf, set->num * 80, "w");
 
 	fprintf(f, "[\n");
 
-	unsigned s;
-	for (s = 0; s < set->num; s++) {
+	for (unsigned s = 0; s < set->num; s++) {
 		JSON_escape(set->entries[s].user, escapeduser);
 
 		fprintf(f, "    { \"user\": \"%s\", \"read\": %s, \"write\": %s, \"owner\": %s }",
