@@ -31,10 +31,11 @@
 #include <libyuv.h>
 #endif
 
-static rfb::LogWriter vlog("FFMPEGVAAPIEncoder");
+static rfb::LogWriter vlog("FFMPEGHWEncoder");
 
 namespace rfb {
-    FFMPEGVAAPIEncoder::FFMPEGVAAPIEncoder(Screen layout_, const FFmpeg &ffmpeg_, SConnection *conn, KasmVideoEncoders::Encoder encoder_,
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::FFMPEGVAAPIEncoder(Screen layout_, const FFmpeg &ffmpeg_, SConnection *conn, KasmVideoEncoders::Encoder encoder_,
         const char *dri_node_, VideoEncoderParams params) :
         VideoEncoder(layout_.id, conn), layout(layout_),
         ffmpeg(ffmpeg_), encoder(encoder_), current_params(params), msg_codec_id(KasmVideoEncoders::to_msg_id(encoder)),
@@ -42,8 +43,8 @@ namespace rfb {
         AVBufferRef *hw_device_ctx{};
         int err{};
 
-        if (err = ffmpeg.av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, dri_node_, nullptr, 0); err < 0) {
-            throw std::runtime_error(fmt::format("Failed to create VAAPI device context {}", ffmpeg.get_error_description(err)));
+        if (err = ffmpeg.av_hwdevice_ctx_create(&hw_device_ctx, HWDeviceType, dri_node_, nullptr, 0); err < 0) {
+            throw std::runtime_error(fmt::format("Failed to create hw device context {}", ffmpeg.get_error_description(err)));
         }
 
         hw_device_ctx_guard.reset(hw_device_ctx);
@@ -65,7 +66,8 @@ namespace rfb {
         pkt_guard.reset(pkt);
     }
 
-    bool FFMPEGVAAPIEncoder::init(int width, int height, VideoEncoderParams params) {
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    bool FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::init(int width, int height, VideoEncoderParams params) {
         current_params = params;
         AVHWFramesContext *frames_ctx{};
         int err{};
@@ -83,7 +85,7 @@ namespace rfb {
         ctx->framerate = {current_params.frame_rate, 1};
         ctx->gop_size = current_params.group_of_picture; // interval between I-frames
         ctx->max_b_frames = 0; // No B-frames for immediate output
-        ctx->pix_fmt = AV_PIX_FMT_VAAPI;
+        ctx->pix_fmt = AVPixFmt;
         ctx_guard->width = current_params.width;
         ctx_guard->height = current_params.height;
         ctx_guard->coded_width = current_params.width;
@@ -91,13 +93,39 @@ namespace rfb {
         ctx->delay = 0;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
-//TODO
-        if (ffmpeg.av_opt_set(ctx->priv_data, "async_depth", "1", 0) < 0) {
-            vlog.info("Cannot set async_depth");
-        }
+        if constexpr (HWDeviceType == AV_HWDEVICE_TYPE_CUDA && AVPixFmt == AV_PIX_FMT_CUDA) {
+            // NVENC low-latency settings
+            if (ffmpeg.av_opt_set(ctx->priv_data, "preset", "p1", 0) < 0) {
+                vlog.info("Cannot set preset");
+            }
 
-        if (ffmpeg.av_opt_set(ctx->priv_data, "rc_mode", "CQP", 0) < 0) {
-            vlog.info("Cannot set rc_mode");
+            if (ffmpeg.av_opt_set(ctx->priv_data, "tune", "ull", 0) < 0) {
+                vlog.info("Cannot set tune");
+            }
+
+            if (ffmpeg.av_opt_set(ctx->priv_data, "rc", "vbr_hq", 0) < 0) {
+                vlog.info("Cannot set rc");
+            }
+
+            if (ffmpeg.av_opt_set(ctx->priv_data, "zerolatency", "1", 0) < 0) {
+                vlog.info("Cannot set zerolatency");
+            }
+
+            if (ffmpeg.av_opt_set(ctx->priv_data, "delay", "0", 0) < 0) {
+                vlog.info("Cannot set delay");
+            }
+
+            if (ffmpeg.av_opt_set(ctx->priv_data, "rc-lookahead", "0", 0) < 0) {
+                vlog.info("Cannot set rc-lookahead");
+            }
+        } else {
+            if (ffmpeg.av_opt_set(ctx->priv_data, "async_depth", "1", 0) < 0) {
+                vlog.info("Cannot set async_depth");
+            }
+
+            if (ffmpeg.av_opt_set(ctx->priv_data, "rc_mode", "CQP", 0) < 0) {
+                vlog.info("Cannot set rc_mode");
+            }
         }
 
         if (ffmpeg.av_opt_set_int(ctx->priv_data, "qp", current_params.quality, 0) < 0) {
@@ -113,7 +141,7 @@ namespace rfb {
         hw_frames_ref_guard.reset(hw_frames_ctx);
 
         frames_ctx = reinterpret_cast<AVHWFramesContext *>(hw_frames_ctx->data);
-        frames_ctx->format = AV_PIX_FMT_VAAPI;
+        frames_ctx->format = AVPixFmt;
         frames_ctx->sw_format = AV_PIX_FMT_NV12;
         frames_ctx->width = current_params.width;
         frames_ctx->height = current_params.height;
@@ -176,11 +204,13 @@ namespace rfb {
         return true;
     }
 
-    bool FFMPEGVAAPIEncoder::isSupported() const {
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    bool FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::isSupported() const {
         return conn->cp.supportsEncoding(encodingKasmVideo);
     }
 
-    bool FFMPEGVAAPIEncoder::render(const PixelBuffer *pb) {
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    bool FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::render(const PixelBuffer *pb) {
         // compress
         int stride;
         const auto rect = layout.dimensions;
@@ -266,7 +296,8 @@ namespace rfb {
         return true;
     }
 
-    void FFMPEGVAAPIEncoder::writeRect(const PixelBuffer *pb, const Palette &palette) {
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    void FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::writeRect(const PixelBuffer *pb, const Palette &palette) {
         auto *pkt = pkt_guard.get();
         auto *os = conn->getOutStream(conn->cp.supportsUdp);
         os->writeU8(layout.id);
@@ -279,11 +310,15 @@ namespace rfb {
         ffmpeg.av_packet_unref(pkt);
     }
 
-    void FFMPEGVAAPIEncoder::writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) {}
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    void FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) {}
 
-    void FFMPEGVAAPIEncoder::writeSkipRect() {
+    template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+    void FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::writeSkipRect() {
         auto *os = conn->getOutStream(conn->cp.supportsUdp);
         os->writeU8(layout.id);
         os->writeU8(kasmVideoSkip);
     }
+
+    template class FFMPEGVAAPIEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>;
 } // namespace rfb

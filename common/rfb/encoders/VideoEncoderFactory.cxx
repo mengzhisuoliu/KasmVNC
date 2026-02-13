@@ -111,7 +111,7 @@ namespace rfb {
                 if (!ffmpeg)
                     throw std::runtime_error("FFmpeg is required");
 
-                if constexpr (std::is_same_v<T, FFMPEGVAAPIEncoder>) {
+                if constexpr (std::is_same_v<T, FFMPEGVAAPIEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>>) {
                     return new T(layout, *ffmpeg, conn, encoder, dri_node, params);
                 } else
                     return new T(layout, *ffmpeg, conn, encoder, params);
@@ -121,7 +121,7 @@ namespace rfb {
         }
     };
 
-    using FFMPEGVAAPIEncoderBuilder = EncoderBuilder<FFMPEGVAAPIEncoder>;
+    using FFMPEGVAAPIEncoderBuilder = EncoderBuilder<FFMPEGVAAPIEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>>;
     using VAAPIEncoderBuilder = EncoderBuilder<VAAPIEncoder>;
     using SoftwareEncoderBuilder = EncoderBuilder<SoftwareEncoder>;
 

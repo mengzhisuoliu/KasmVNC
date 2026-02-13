@@ -24,6 +24,7 @@
 #include "rfb/ffmpeg.h"
 
 namespace rfb {
+template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
 class FFMPEGVAAPIEncoder final : public VideoEncoder {
     Screen layout;
     const FFmpeg &ffmpeg;
