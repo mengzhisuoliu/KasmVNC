@@ -43,12 +43,17 @@ namespace rfb {
         AVBufferRef *hw_device_ctx{};
         int err{};
 
+        vlog.debug("Constructor: HWDeviceType=%d, AVPixFmt=%d, encoder=%s, dri_node=%s",
+                   HWDeviceType, AVPixFmt, KasmVideoEncoders::to_string(encoder),
+                   dri_node_ ? dri_node_ : "null");
+
         if (err = ffmpeg.av_hwdevice_ctx_create(&hw_device_ctx, HWDeviceType, dri_node_, nullptr, 0); err < 0) {
             throw std::runtime_error(fmt::format("Failed to create hw device context {}", ffmpeg.get_error_description(err)));
         }
 
         hw_device_ctx_guard.reset(hw_device_ctx);
         const auto *enc_name = KasmVideoEncoders::to_string(encoder);
+        vlog.debug("Looking for encoder: %s", enc_name);
         codec = ffmpeg.avcodec_find_encoder_by_name(enc_name);
         if (!codec)
             throw std::runtime_error(fmt::format("Could not find {} encoder", enc_name));
@@ -93,6 +98,10 @@ namespace rfb {
         ctx->delay = 0;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
+        vlog.debug("Encoder context config: pix_fmt=%d, width=%d, height=%d, coded_width=%d, coded_height=%d, framerate=%d, gop=%d, quality=%d",
+                   ctx->pix_fmt, ctx->width, ctx->height, ctx->coded_width, ctx->coded_height,
+                   current_params.frame_rate, current_params.group_of_picture, current_params.quality);
+
         if constexpr (HWDeviceType == AV_HWDEVICE_TYPE_CUDA && AVPixFmt == AV_PIX_FMT_CUDA) {
             // NVENC low-latency settings
             if (ffmpeg.av_opt_set(ctx->priv_data, "preset", "p1", 0) < 0) {
@@ -134,7 +143,7 @@ namespace rfb {
 
         auto *hw_frames_ctx = ffmpeg.av_hwframe_ctx_alloc(hw_device_ctx_guard.get());
         if (!hw_frames_ctx) {
-            vlog.error("Failed to create VAAPI frame context");
+            vlog.error("Failed to create HW frame context");
             return false;
         }
 
@@ -146,10 +155,15 @@ namespace rfb {
         frames_ctx->width = current_params.width;
         frames_ctx->height = current_params.height;
         frames_ctx->initial_pool_size = 20;
+
+        vlog.debug("HW frame context config: format=%d (AVPixFmt template), sw_format=%d (NV12), width=%d, height=%d, pool_size=20",
+                   frames_ctx->format, frames_ctx->sw_format, frames_ctx->width, frames_ctx->height);
+
         if (err = ffmpeg.av_hwframe_ctx_init(hw_frames_ctx); err < 0) {
-            vlog.error("Failed to initialize VAAPI frame context (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
+            vlog.error("Failed to initialize HW frame context (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
+        vlog.debug("HW frame context initialized successfully");
 
         FFmpeg::av_buffer_unref(&ctx_guard->hw_frames_ctx);
 
@@ -171,10 +185,14 @@ namespace rfb {
         frame->height = params.height;
         frame->pict_type = AV_PICTURE_TYPE_I;
 
+        vlog.debug("SW frame config: format=%d (NV12), width=%d, height=%d", frame->format, frame->width, frame->height);
+
         if (ffmpeg.av_frame_get_buffer(frame, 0) < 0) {
             vlog.error("Could not allocate sw-frame data");
             return false;
         }
+
+        vlog.debug("SW frame allocated: linesize[0]=%d, linesize[1]=%d", frame->linesize[0], frame->linesize[1]);
 
         auto *hw_frame = ffmpeg.av_frame_alloc();
         if (!hw_frame) {
@@ -188,10 +206,12 @@ namespace rfb {
             return false;
         }
 
+        vlog.debug("Opening codec: %s", codec->name);
         if (err = ffmpeg.avcodec_open2(ctx_guard.get(), codec, nullptr); err < 0) {
             vlog.error("Failed to open codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
+        vlog.debug("Codec opened successfully");
 #if defined(FFMPEG_FILTER)
         const char* filters = "format=nv12,hwupload";  // Or "scale_vaapi=format=nv12" for explicit VAAPI scaler
         ffmpeg.avfilter_graph_parse_ptr(filter_graph, filters, &inputs, &outputs, nullptr);
@@ -255,26 +275,39 @@ namespace rfb {
         int err{};
 
 #if defined(LIBYUV_CONVERSION)
+        vlog.debug("Converting ARGB to NV12: src_stride=%d, dst_linesize[0]=%d, dst_linesize[1]=%d, dst_width=%d, dst_height=%d",
+                   src_stride_bytes, frame->linesize[0], frame->linesize[1], dst_width, dst_height);
+
         if (err = libyuv::ARGBToNV12(buffer, src_stride_bytes, frame->data[0], frame->linesize[0],
             frame->data[1], frame->linesize[1], dst_width, dst_height); err != 0) {
             vlog.error("libyuv::ARGBToNV12 failed with code: %d", err);
             return false;
         }
+        vlog.debug("ARGB to NV12 conversion successful");
 #endif
 
 
         frame->pts = pts++;
+
+        vlog.debug("SW frame before transfer: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
+                   frame->format, frame->width, frame->height, frame->linesize[0], frame->linesize[1], frame->pts);
 
         if (err = ffmpeg.av_hwframe_transfer_data(hw_frame_guard.get(), frame, 0); err < 0) {
             vlog.error(
                 "Error while transferring frame data to surface (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
+        vlog.debug("Frame transfer successful");
+
+        auto *hw_frame = hw_frame_guard.get();
+        vlog.debug("HW frame before send: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
+                   hw_frame->format, hw_frame->width, hw_frame->height, hw_frame->linesize[0], hw_frame->linesize[1], hw_frame->pts);
 
         if (err = ffmpeg.avcodec_send_frame(ctx_guard.get(), hw_frame_guard.get()); err < 0) {
             vlog.error("Error sending frame to codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
+        vlog.debug("Frame sent to codec successfully");
 
         auto *pkt = pkt_guard.get();
 
