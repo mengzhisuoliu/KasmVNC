@@ -56,10 +56,14 @@ RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     libgbm-dev \
     htop \
     libva-dev \
+    libdrm-dev \
     libpam0g-dev \
     libbsd-dev \
     openssh-server \
-    inotify-tools
+    inotify-tools \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    mesa-common-dev
 
 RUN echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     mkdir -p /var/run/sshd && \
@@ -68,9 +72,10 @@ RUN echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 RUN apt install -y nodejs nginx
 
-# Packages required for VA-API hardware acceleration (Mesa + Intel)
-RUN apt install -y vainfo mesa-va-drivers mesa-vulkan-drivers \
-    intel-media-va-driver-non-free
+# x86_64 specific operations
+RUN if [ "$(arch)" = "x86_64" ]; then \
+        apt-get update && apt-get install -y intel-media-va-driver-non-free; \
+    fi
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
