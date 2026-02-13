@@ -25,7 +25,7 @@
 
 namespace rfb {
 template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-class FFMPEGVAAPIEncoder final : public VideoEncoder {
+class FFMPEGHWEncoder final : public VideoEncoder {
     Screen layout;
     const FFmpeg &ffmpeg;
 
@@ -50,7 +50,7 @@ class FFMPEGVAAPIEncoder final : public VideoEncoder {
 
     template<typename T>
     friend class EncoderBuilder;
-    FFMPEGVAAPIEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
+    FFMPEGHWEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
         const char *dri_node, VideoEncoderParams params);
 
 public:
@@ -60,4 +60,7 @@ public:
     bool render(const PixelBuffer *pb) override;
     void writeSkipRect() override;
 };
+
+    using FFMPEGVAAPIEncoder = FFMPEGHWEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>;
+    using FFMPEGCudaEncoder = FFMPEGHWEncoder<AV_HWDEVICE_TYPE_CUDA, AV_PIX_FMT_CUDA>;
 } // namespace rfb

@@ -18,7 +18,7 @@
 #include "VideoEncoderFactory.h"
 
 #include <cstdint>
-#include "FFMPEGVAAPIEncoder.h"
+#include "FFMPEGHWEncoder.h"
 #include "SoftwareEncoder.h"
 #include "VAAPIEncoder.h"
 
@@ -111,7 +111,7 @@ namespace rfb {
                 if (!ffmpeg)
                     throw std::runtime_error("FFmpeg is required");
 
-                if constexpr (std::is_same_v<T, FFMPEGVAAPIEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>>) {
+                if constexpr (std::is_same_v<T, FFMPEGVAAPIEncoder> || std::is_same_v<T, FFMPEGCudaEncoder>) {
                     return new T(layout, *ffmpeg, conn, encoder, dri_node, params);
                 } else
                     return new T(layout, *ffmpeg, conn, encoder, params);
@@ -121,7 +121,8 @@ namespace rfb {
         }
     };
 
-    using FFMPEGVAAPIEncoderBuilder = EncoderBuilder<FFMPEGVAAPIEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>>;
+    using FFMPEGVAAPIEncoderBuilder = EncoderBuilder<FFMPEGVAAPIEncoder>;
+    using FFMPEGCudaEncoderBuilder = EncoderBuilder<FFMPEGCudaEncoder>;
     using VAAPIEncoderBuilder = EncoderBuilder<VAAPIEncoder>;
     using SoftwareEncoderBuilder = EncoderBuilder<SoftwareEncoder>;
 
@@ -146,7 +147,13 @@ namespace rfb {
             case KasmVideoEncoders::Encoder::h264_nvenc:
             case KasmVideoEncoders::Encoder::h265_nvenc:
             case KasmVideoEncoders::Encoder::av1_nvenc:
-                throw std::runtime_error("NVENC is not supported yet");
+                return FFMPEGVAAPIEncoderBuilder::create(ffmpeg)
+                    .with_layout(layout)
+                    .with_connection(conn)
+                    .with_encoder(video_encoder)
+                    .with_params(params)
+                    .with_dri_node(dri_node)
+                    .build();
             default:
                 return SoftwareEncoderBuilder::create(ffmpeg)
                     .with_layout(layout)

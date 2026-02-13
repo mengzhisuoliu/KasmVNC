@@ -15,7 +15,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
  * USA.
  */
-#include "FFMPEGVAAPIEncoder.h"
+#include "FFMPEGHWEncoder.h"
 
 #include <fmt/format.h>
 #include <rfb/ServerCore.h>
@@ -35,7 +35,7 @@ static rfb::LogWriter vlog("FFMPEGHWEncoder");
 
 namespace rfb {
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::FFMPEGVAAPIEncoder(Screen layout_, const FFmpeg &ffmpeg_, SConnection *conn, KasmVideoEncoders::Encoder encoder_,
+    FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::FFMPEGHWEncoder(Screen layout_, const FFmpeg &ffmpeg_, SConnection *conn, KasmVideoEncoders::Encoder encoder_,
         const char *dri_node_, VideoEncoderParams params) :
         VideoEncoder(layout_.id, conn), layout(layout_),
         ffmpeg(ffmpeg_), encoder(encoder_), current_params(params), msg_codec_id(KasmVideoEncoders::to_msg_id(encoder)),
@@ -67,7 +67,7 @@ namespace rfb {
     }
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    bool FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::init(int width, int height, VideoEncoderParams params) {
+    bool FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::init(int width, int height, VideoEncoderParams params) {
         current_params = params;
         AVHWFramesContext *frames_ctx{};
         int err{};
@@ -205,12 +205,12 @@ namespace rfb {
     }
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    bool FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::isSupported() const {
+    bool FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::isSupported() const {
         return conn->cp.supportsEncoding(encodingKasmVideo);
     }
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    bool FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::render(const PixelBuffer *pb) {
+    bool FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::render(const PixelBuffer *pb) {
         // compress
         int stride;
         const auto rect = layout.dimensions;
@@ -297,7 +297,7 @@ namespace rfb {
     }
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    void FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::writeRect(const PixelBuffer *pb, const Palette &palette) {
+    void FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::writeRect(const PixelBuffer *pb, const Palette &palette) {
         auto *pkt = pkt_guard.get();
         auto *os = conn->getOutStream(conn->cp.supportsUdp);
         os->writeU8(layout.id);
@@ -311,14 +311,15 @@ namespace rfb {
     }
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    void FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) {}
+    void FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) {}
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    void FFMPEGVAAPIEncoder<HWDeviceType, AVPixFmt>::writeSkipRect() {
+    void FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::writeSkipRect() {
         auto *os = conn->getOutStream(conn->cp.supportsUdp);
         os->writeU8(layout.id);
         os->writeU8(kasmVideoSkip);
     }
 
-    template class FFMPEGVAAPIEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>;
+    template class FFMPEGHWEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>;
+    template class FFMPEGHWEncoder<AV_HWDEVICE_TYPE_CUDA, AV_PIX_FMT_CUDA>;
 } // namespace rfb
