@@ -52,8 +52,11 @@ namespace rfb::video_encoders {
             const auto encoders = SupportedVideoEncoders::map_encoders(parsed_encoders);
             debug_encoders("CLI-specified video codecs", encoders);
 
-            static std::array<EncoderCandidate, 4> candidates = {
+            static std::array<EncoderCandidate, 7> candidates = {
                 {
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_nvenc, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_CUDA},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_nvenc, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_CUDA},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::av1_nvenc, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_CUDA},
                     EncoderCandidate{KasmVideoEncoders::Encoder::h264_ffmpeg_vaapi, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_VAAPI},
                     EncoderCandidate{KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_VAAPI},
                     // EncoderCandidate{KasmVideoEncoders::Encoder::av1_ffmpeg_vaapi, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_VAAPI},
