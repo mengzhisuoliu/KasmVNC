@@ -139,8 +139,8 @@ class FFmpeg final {
     using av_codec_is_encoder_func = int (*)(const AVCodec *codec);
 
     // libavfilter
-    using avfilter_graph_parse_ptr_func = int (*)(AVFilterGraph *graph, const char *filters, AVFilterInOut **inputs,
-        AVFilterInOut **outputs, void *log_ctx);
+    /*using avfilter_graph_parse_ptr_func = int (*)(AVFilterGraph *graph, const char *filters, AVFilterInOut **inputs,
+        AVFilterInOut **outputs, void *log_ctx);*/
 
     struct DlHandler {
         void operator()(void *handle) const {
@@ -201,7 +201,7 @@ class FFmpeg final {
     av_codec_is_encoder_func av_codec_is_encoder_f{};
 
     // libavfilter
-    avfilter_graph_parse_ptr_func avfilter_graph_parse_ptr_f{};
+    // avfilter_graph_parse_ptr_func avfilter_graph_parse_ptr_f{};
 
     DlHandlerGuard libavformat{};
     DlHandlerGuard libavutil{};
