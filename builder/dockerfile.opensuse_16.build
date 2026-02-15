@@ -51,6 +51,10 @@ RUN zypper install -ny \
   zlib-devel \
   libva-devel
 
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+        zypper install -ny intel-media-driver; \
+    fi
+
 RUN useradd -u 1000 docker && \
   usermod -a -G docker docker
 
