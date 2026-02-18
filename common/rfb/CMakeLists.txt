@@ -155,10 +155,12 @@ endif ()
 if (ENABLE_LIBYUV)
     find_library(LIBYUV_LIBRARY NAMES yuv)
     #pkg_check_modules(LIBYUV libyuv)
-    if (LIBYUV_FOUND)
-        add_definitions(-DLIBYUV_CONVERSION)
-        set(RFB_LIBRARIES ${RFB_LIBRARIES} ${LIBYUV_LIBRARY})
+    if (NOT LIBYUV_LIBRARY)
+        message(FATAL_ERROR "ENABLE_LIBYUV=ON but libyuv was not found")
     endif ()
+
+    set(RFB_DEFINITIONS ${RFB_DEFINITIONS} LIBYUV_CONVERSION)
+    set(RFB_LIBRARIES ${RFB_LIBRARIES} ${LIBYUV_LIBRARY})
 endif ()
 
 add_library(rfb STATIC ${RFB_SOURCES})
@@ -180,6 +182,8 @@ set(RFB_LIBRARIES ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRAR
 if (DEBUG_FFMPEG)
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${FFMPEG_LIBRARIES})
 endif ()
+
+target_compile_definitions(rfb PRIVATE ${RFB_DEFINITIONS})
 
 target_include_directories(rfb PUBLIC ${VIDEO_ACCELERATION_INCLUDE_DIRS})
 target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES})
