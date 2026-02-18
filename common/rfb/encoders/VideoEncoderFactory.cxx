@@ -147,7 +147,7 @@ namespace rfb {
             case KasmVideoEncoders::Encoder::h264_nvenc:
             case KasmVideoEncoders::Encoder::h265_nvenc:
             case KasmVideoEncoders::Encoder::av1_nvenc:
-                return FFMPEGVAAPIEncoderBuilder::create(ffmpeg)
+                return FFMPEGCudaEncoderBuilder::create(ffmpeg)
                     .with_layout(layout)
                     .with_connection(conn)
                     .with_encoder(video_encoder)
