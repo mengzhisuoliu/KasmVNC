@@ -13,3 +13,5 @@ echo ">> Building cpuid..."
 "${source_dir}"/build-cpuid
 echo ">> Building fmt..."
 "${source_dir}"/build-fmt
+echo ">> Building libyuv..."
+"${source_dir}"/build-libyuv
