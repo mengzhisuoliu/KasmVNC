@@ -18,7 +18,7 @@ cp -r kasmweb/dist "$current_dir"/builder/www
 
 
 for file in "$script_dir"/dockerfile.*.build; do
-    if [[ "$file" == *deb* ]] || [[ "$file" == *apk* ]] || [[ "$file" == *rpm* ]] || [[ "$file" == *www* ]]; then
+    if [[ "$file" == *.deb.build ]] || [[ "$file" == *.apk.build ]] || [[ "$file" == *.rpm.build ]] || [[ "$file" == *www* ]]; then
         continue
     fi
 
@@ -52,6 +52,8 @@ for file in "$script_dir"/dockerfile.*.build; do
 
     echo "Container for image '$image_name' "
     if [ $exit_code -ne 0 ]; then
+	      docker run -it --entrypoint /bin/bash -u root -v "$current_dir/builder/build":/build --device=/dev/dri:/dev/dri "$image_name"
+
         echo "exited with error (exit code $exit_code)."
         break
     else
