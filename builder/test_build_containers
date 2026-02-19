@@ -16,6 +16,9 @@ npm run build
 cd "$current_dir"
 cp -r kasmweb/dist "$current_dir"/builder/www
 
+if [ -f /etc/nv_tegra_release ]; then
+    NETWORK_FLAG="--network=host"
+fi
 
 for file in "$script_dir"/dockerfile.*.build; do
     if [[ "$file" == *.deb.build ]] || [[ "$file" == *.apk.build ]] || [[ "$file" == *.rpm.build ]] || [[ "$file" == *www* ]]; then
@@ -37,7 +40,7 @@ for file in "$script_dir"/dockerfile.*.build; do
     rm -rf unix
     git checkout HEAD -- unix/
 
-    docker build -f "$file" -t "$image_name" "$current_dir"
+    docker build $NETWORK_FLAG -f "$file" -t "$image_name" "$current_dir"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Build failed for $filename"
@@ -46,13 +49,13 @@ for file in "$script_dir"/dockerfile.*.build; do
 
     echo "Running container from image '$image_name'"
     # Run the container and capture the exit code
-    docker run -it -v "$current_dir":/src -v "$current_dir/builder/build":/build --device=/dev/dri:/dev/dri "$image_name"
+    docker run -it $NETWORK_FLAG  -v "$current_dir/builder/build":/build --device=/dev/dri:/dev/dri "$image_name"
 
     exit_code=$?
 
     echo "Container for image '$image_name' "
     if [ $exit_code -ne 0 ]; then
-	      docker run -it --entrypoint /bin/bash -u root -v "$current_dir/builder/build":/build --device=/dev/dri:/dev/dri "$image_name"
+	      docker run -it $NETWORK_FLAG --entrypoint /bin/bash -u root -v "$current_dir/builder/build":/build --device=/dev/dri:/dev/dri "$image_name"
 
         echo "exited with error (exit code $exit_code)."
         break
