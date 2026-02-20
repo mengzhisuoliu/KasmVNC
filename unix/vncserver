@@ -2103,8 +2103,8 @@ sub DefineConfigToCLIConversion {
           KasmVNC::ConfigKey->new({
             name => "encoding.video_streaming_mode.codec",
             validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(auto|h264|h264_vaapi|avc|avc_vaapi|h265|h265_vaapi|hevc|hevc_vaapi)(,(auto|h264|h264_vaapi|avc|avc_vaapi|h265|h265_vaapi|hevc|hevc_vaapi))*$/,
-              errorMessage => "must be one of [auto, h264, h264_vaapi, avc, avc_vaapi, h265, h265_vaapi, hevc, hevc_vaapi, av1, av1_vaapi] or a comma-separated list of those values"
+              pattern => qr/^(auto|h264|h264_vaapi|h264_nvenc|avc|avc_vaapi|avc_nvenc|h265|h265_vaapi|h265_nvenc|hevc|hevc_vaapi|hevc_nvenc|av1_vaapi|av1_nvenc)(,(auto|h264|h264_vaapi|h264_nvenc|avc|avc_vaapi|avc_nvenc|h265|h265_vaapi|h265_nvenc|hevc|hevc_vaapi|hevc_nvenc|av1_vaapi|av1_nvenc))*$/,
+              errorMessage => "must be one of [auto, h264, h264_vaapi, h264_nvenc, avc, avc_vaapi, avc_nvenc, h265, h265_vaapi, h265_nvenc, hevc, hevc_vaapi, hevc_nvenc, av1_vaapi, av1_nvenc] or a comma-separated list of those values"
             })
           })
         ]
