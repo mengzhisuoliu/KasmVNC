@@ -22,19 +22,17 @@ prepare_source() {
 build_and_install() {
   export MAKEFLAGS=-j$(nproc)
 
-  mkdir -p build
-  cd build
+  # Disable problematic NEON64 assembly for ARM64
+  if [ "$(uname -m)" = "aarch64" ]; then
+    EXTRA_CXXFLAGS="-DLIBYUV_DISABLE_NEON"
+  else
+    EXTRA_CXXFLAGS=""
+  fi
 
-  cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-    -DCMAKE_INSTALL_PREFIX=/usr
-
-  make yuv
-  install -D -m 0644 libyuv.a /usr/lib/libyuv.a
-
-  cd ..
   cp -r include/ /usr/
+  make V=1 -f linux.mk CFLAGS="-O2 -fomit-frame-pointer -fPIC" CXXFLAGS="-O2 -fomit-frame-pointer -fPIC $EXTRA_CXXFLAGS"
+
+  install -D -m 0644 libyuv.a /usr/lib/libyuv.a
 }
 
 prepare_source
