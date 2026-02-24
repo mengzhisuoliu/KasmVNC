@@ -182,13 +182,13 @@ namespace rfb {
             return result;
         }
 
-        static KasmVideoEncoders::Encoders filter_available_encoders(
-            const KasmVideoEncoders::Encoders &encoders, const KasmVideoEncoders::Encoders &available) {
-            KasmVideoEncoders::Encoders result;
+        static KasmVideoEncoders::EncoderConfigs filter_available_encoders(
+            const KasmVideoEncoders::Encoders &encoders, const KasmVideoEncoders::EncoderConfigs &available) {
+            KasmVideoEncoders::EncoderConfigs result;
 
-            for (auto encoder: available) {
-                if (std::ranges::find(encoders.begin(), encoders.end(), encoder) != encoders.end())
-                    result.push_back(encoder);
+            for (const auto &encoder_config: available) {
+                if (std::ranges::find(encoders.begin(), encoders.end(), encoder_config.encoder) != encoders.end())
+                    result.push_back(encoder_config);
             }
 
             return result;

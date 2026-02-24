@@ -1,5 +1,5 @@
 /* Copyright (C) 2025 Kasm.  All Rights Reserved.
-*
+ *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -30,14 +30,13 @@ namespace rfb {
     static LogWriter vlog("ScreenEncoderManager");
 
     template<uint8_t T>
-    ScreenEncoderManager<T>::ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::Encoder encoder,
-        const std::vector<KasmVideoEncoders::Encoder> &encoders, SConnection *conn, const char *dri_node_, VideoEncoderParams params) :
+    ScreenEncoderManager<T>::ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::EncoderConfig encoder,
+        const KasmVideoEncoders::EncoderConfigs &encoders, SConnection *conn, VideoEncoderParams params) :
         Encoder(conn, encodingKasmVideo, static_cast<EncoderFlags>(EncoderUseNativePF | EncoderLossy), -1),
         ffmpeg(ffmpeg_),
         current_params(params),
         base_video_encoder(encoder),
-        available_encoders(encoders),
-        dri_node(dri_node_) {
+        available_encoders(encoders) {
         screens_to_refresh.reserve(T);
     }
 
@@ -49,19 +48,17 @@ namespace rfb {
     template<uint8_t T>
     void ScreenEncoderManager<T>::clear() {
         current_params = {};
-        base_video_encoder = KasmVideoEncoders::Encoder::unavailable;
+        base_video_encoder = KasmVideoEncoders::EncoderConfig{KasmVideoEncoders::Encoder::unavailable};
         available_encoders.clear();
-        dri_node = nullptr;
         screens_to_refresh.clear();
         clear_screens();
     }
 
     template<uint8_t T>
-    void ScreenEncoderManager<T>::set_params(KasmVideoEncoders::Encoder encoder,
-        const std::vector<KasmVideoEncoders::Encoder> &encoders, const char *dri_node_, VideoEncoderParams params) {
+    void ScreenEncoderManager<T>::set_params(KasmVideoEncoders::EncoderConfig encoder,
+        const KasmVideoEncoders::EncoderConfigs &encoders, VideoEncoderParams params) {
         base_video_encoder = encoder;
         available_encoders = encoders;
-        dri_node = dri_node_;
         current_params = params;
     }
 
@@ -70,9 +67,9 @@ namespace rfb {
     VideoEncoder *ScreenEncoderManager<T>::add_encoder(const Screen &layout) const {
         VideoEncoder *encoder{};
         try {
-            encoder = create_encoder(layout, &ffmpeg, conn, base_video_encoder, dri_node, current_params);
+            encoder = create_encoder(layout, &ffmpeg, conn, base_video_encoder.encoder, base_video_encoder.dri_path.c_str(), current_params);
         } catch (const std::exception &e) {
-            if (base_video_encoder != KasmVideoEncoders::Encoder::h264_software) {
+            if (base_video_encoder.encoder != KasmVideoEncoders::Encoder::h264_software) {
                 vlog.error("Attempting fallback to software encoder due to error: %s", e.what());
                 try {
                     encoder = create_encoder(layout, &ffmpeg, conn, KasmVideoEncoders::Encoder::h264_software, nullptr, current_params);

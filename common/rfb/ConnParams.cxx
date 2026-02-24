@@ -31,6 +31,7 @@
 #include <rfb/util.h>
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 
 using namespace rfb;
 
@@ -357,16 +358,24 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     }
 
     if (encodings[i] >= pseudoEncodingStreamingVideoQualityLevel0 && encodings[i] <= pseudoEncodingStreamingVideoQualityLevel63) {
-        const auto &config = EncoderConfiguration::get_configuration(encoder);
+        const auto &config = EncoderConfiguration::get_configuration(encoder_config.encoder);
         const auto value = config.max_quality - encodings[i] + pseudoEncodingStreamingVideoQualityLevel0;
         if (can_apply)
             Server::videoQualityCRFCQP.setParam(value);
         clientparlog("videoQualityCRFCQP", value, can_apply);
     }
 
-    if (encodings[i] >=pseudoEncodingStreamingModeAV1QSV && encodings[i] <= pseudoEncodingStreamingModeJpegWebp) {
-        if (can_apply)
-            encoder = KasmVideoEncoders::from_encoding(encodings[i]);
+    if (encodings[i] >= pseudoEncodingStreamingModeAV1QSV && encodings[i] <= pseudoEncodingStreamingModeJpegWebp) {
+        if (can_apply) {
+            const auto encoder = KasmVideoEncoders::from_encoding(encodings[i]);
+            auto iter = std::find_if(available_encoders.begin(),
+                available_encoders.end(),
+                [encoder](const KasmVideoEncoders::EncoderConfig &config) { return config.encoder == encoder; });
+            if (iter != available_encoders.end())
+                encoder_config = *iter;
+            else
+                encoder_config = KasmVideoEncoders::EncoderConfig{encoder};
+        }
         clientparlog("Encoder", encodings[i], can_apply);
     }
 

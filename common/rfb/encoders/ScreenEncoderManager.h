@@ -47,9 +47,8 @@ namespace rfb {
         const FFmpeg &ffmpeg;
         VideoEncoderParams current_params;
 
-        KasmVideoEncoders::Encoder base_video_encoder;
-        std::vector<KasmVideoEncoders::Encoder> available_encoders;
-        const char *dri_node{};
+        KasmVideoEncoders::EncoderConfig base_video_encoder;
+        KasmVideoEncoders::EncoderConfigs available_encoders;
 
         [[nodiscard]] VideoEncoder *add_encoder(const Screen &layout) const;
         bool add_screen(uint8_t index, const Screen &layout);
@@ -84,8 +83,8 @@ namespace rfb {
             return screens.end();
         }
 
-        explicit ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::Encoder encoder,
-            const std::vector<KasmVideoEncoders::Encoder> &encoders, SConnection *conn, const char *dri_node, VideoEncoderParams params);
+        explicit ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::EncoderConfig encoder,
+            const KasmVideoEncoders::EncoderConfigs &encoders, SConnection *conn, VideoEncoderParams params);
         ~ScreenEncoderManager() override;
 
         ScreenEncoderManager(const ScreenEncoderManager &) = delete;
@@ -94,11 +93,11 @@ namespace rfb {
         ScreenEncoderManager &operator=(ScreenEncoderManager &&) = delete;
 
         void clear();
-        void set_params(KasmVideoEncoders::Encoder encoder, const std::vector<KasmVideoEncoders::Encoder> &encoders,
-            const char *dri_node_, VideoEncoderParams params);
+        void set_params(KasmVideoEncoders::EncoderConfig encoder, const KasmVideoEncoders::EncoderConfigs &encoders,
+            VideoEncoderParams params);
 
         bool sync_layout(const ScreenSet &layout, const Region &region);
-        [[nodiscard]] KasmVideoEncoders::Encoder get_encoder() const {
+        [[nodiscard]] KasmVideoEncoders::EncoderConfig get_encoder_config() const {
             return base_video_encoder;
         }
 

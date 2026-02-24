@@ -189,7 +189,6 @@ EncodeManager::EncodeManager(SConnection *conn_, EncCache *encCache_, const FFmp
             encoder_probe.get_best_encoder(),
             encoder_probe.get_available_encoders(),
             conn,
-            encoder_probe.get_drm_device_path(),
             {conn_->cp.width,
                 conn_->cp.height,
                 static_cast<uint8_t>(Server::frameRate),
@@ -439,9 +438,13 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     writeCopyRects(copied, copyDelta);
     writeCopyPassRects(copypassed);
 
-    bool video_mode = video_mode_available && conn->cp.encoder != KasmVideoEncoders::Encoder::unavailable;
+    //gettimeofday(&t5, NULL);
+
+    bool video_mode = video_mode_available && conn->cp.encoder_config.encoder != KasmVideoEncoders::Encoder::unavailable;
     if (video_mode) {
         video_mode = updateVideo(changed, layout, pb);
+        if (!video_mode)
+            conn->cp.encoder_config.encoder = KasmVideoEncoders::Encoder::unavailable;
     }
 
     if (!video_mode) {
@@ -485,11 +488,12 @@ bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, 
     if (!screen_encoder_manager)
         return false;
 
-    if (screen_encoder_manager->get_encoder() != conn->cp.encoder) {
+    //const auto start = std::chrono::high_resolution_clock::now();
+
+    if (screen_encoder_manager->get_encoder_config().encoder != conn->cp.encoder_config.encoder) {
         screen_encoder_manager->clear();
-        screen_encoder_manager->set_params(conn->cp.encoder,
+        screen_encoder_manager->set_params(conn->cp.encoder_config,
             encoder_probe.get_available_encoders(),
-            encoder_probe.get_drm_device_path(),
             {0,
                 0,
                 static_cast<uint8_t>(Server::frameRate),

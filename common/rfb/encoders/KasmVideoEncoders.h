@@ -1,5 +1,5 @@
 /* Copyright (C) 2025 Kasm.  All Rights Reserved.
-*
+ *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -20,6 +20,7 @@
 #include <array>
 #include <cstdint>
 #include <rfb/encodings.h>
+#include <string>
 #include <type_traits>
 #include <vector>
 #include "KasmVideoConstants.h"
@@ -96,7 +97,13 @@ namespace rfb {
             unavailable // Keep this as the last entry - used for compile-time size checks
         };
 
+        struct EncoderConfig {
+            Encoder encoder{};
+            std::string dri_path{};
+        };
+
         using Encoders = std::vector<Encoder>;
+        using EncoderConfigs = std::vector<EncoderConfig>;
 
         static inline auto EncoderNames = std::to_array<const char *>({"av1_vaapi",
             "av1_vaapi",

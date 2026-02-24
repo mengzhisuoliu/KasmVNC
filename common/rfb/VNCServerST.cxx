@@ -159,7 +159,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
               to_string(cpu_info::has_avx512f));
 
     std::string available_accelerators{};
-    for (const auto encoder: encoder_probe.get_available_encoders()) {
+    for (const auto &[encoder, _]: encoder_probe.get_available_encoders()) {
         if (KasmVideoEncoders::is_accelerated(encoder)) {
             if (!available_accelerators.empty())
                 available_accelerators.append(", ");
@@ -1365,13 +1365,13 @@ void VNCServerST::notifyUserAction(const VNCSConnectionST* newConnection, std::s
         }
         notificationsSent++;
 
-        slog.debug(msgNotification.c_str());
+        slog.debug("%s", msgNotification.c_str());
       } catch (rdr::Exception& e) {
          errNotification.append( e.str());
-        slog.error(errNotification.c_str());
+        slog.error("%s", errNotification.c_str());
       }
         }
   }
   logNotification.append( std::to_string(notificationsSent) + " clients");
-  slog.info(logNotification.c_str());
+  slog.info("%s", logNotification.c_str());
 }

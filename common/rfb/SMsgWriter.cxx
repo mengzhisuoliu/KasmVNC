@@ -774,7 +774,7 @@ void SMsgWriter::writeVideoEncoders(const std::vector<int32_t> &encoders) {
 
     std::vector<int32_t> conjunction;
 
-    for (const auto encoder: cp->available_encoders) {
+    for (const auto &[encoder, _]: cp->available_encoders) {
         if (std::find(encoders.begin(), encoders.end(), KasmVideoEncoders::to_streaming_mode(encoder)) != encoders.end()) {
             conjunction.push_back(KasmVideoEncoders::to_encoding(encoder));
         }

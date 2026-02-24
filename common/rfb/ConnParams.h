@@ -144,8 +144,8 @@ namespace rfb {
     };
 
     bool kasmPassed[KASM_NUM_SETTINGS];
-      KasmVideoEncoders::Encoder encoder{KasmVideoEncoders::Encoder::unavailable};
-      KasmVideoEncoders::Encoders available_encoders;
+      KasmVideoEncoders::EncoderConfig encoder_config{KasmVideoEncoders::Encoder::unavailable};
+      KasmVideoEncoders::EncoderConfigs available_encoders;
 
   private:
 
