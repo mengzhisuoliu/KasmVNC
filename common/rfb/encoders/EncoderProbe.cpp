@@ -17,13 +17,14 @@
  */
 #include "EncoderProbe.h"
 #include <fcntl.h>
+#include <fmt/format.h>
+#include <fstream>
 #include <rfb/LogWriter.h>
 #include <string>
 #include <unistd.h>
 #include <vector>
 #include "KasmVideoConstants.h"
 #include "KasmVideoEncoders.h"
-#include <fstream>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -95,7 +96,7 @@ namespace rfb::video_encoders {
     }
 
     bool EncoderProbe::dri_node_supports_hwdevice_type(const char *dri_node, int hw_type) {
-        const auto path = std::format("/sys/class/drm/{}/device/vendor", dri_node);
+        const auto path = fmt::format("/sys/class/drm/{}/device/vendor", dri_node);
 
         std::ifstream file{path};
         if (!file.is_open())
@@ -115,7 +116,7 @@ namespace rfb::video_encoders {
         }
     }
 
-    bool EncoderProbe::try_open_codec(const char *dri_node, const AVCodec *codec, const EncoderCandidate &candidate) {
+    bool EncoderProbe::try_open_codec(const char *dri_node, const AVCodec *codec, const EncoderCandidate &candidate) const {
         FFmpeg::BufferGuard hw_ctx_guard;
         AVBufferRef *hw_ctx{};
 
@@ -231,7 +232,7 @@ namespace rfb::video_encoders {
                         continue;
                     }
 
-                    const auto dri_device = std::format("/dev/dri/{}", dri_node_path);
+                    const auto dri_device = fmt::format("/dev/dri/{}", dri_node_path);
                     vlog.debug("Trying dri node %s", dri_device.c_str());
                     if (!try_open_codec(dri_device.c_str(), codec, encoder_candidate))
                         continue;
