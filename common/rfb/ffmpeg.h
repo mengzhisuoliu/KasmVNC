@@ -120,6 +120,8 @@ class FFmpeg final {
                                    int srcSliceH, uint8_t *const dst[], const int dstStride[]);
 
     // libavcodec
+    using avcodec_version_func = const unsigned (*) ();
+    using avcodec_configuration_func = const char *(*) ();
     using avcodec_free_context_func = void (*)(AVCodecContext **);
     using av_packet_free_func = void (*)(AVPacket **);
     using avcodec_find_encoder_func = const AVCodec *(*) (AVCodecID id);
@@ -182,6 +184,8 @@ class FFmpeg final {
     sws_scale_func sws_scale_f{};
 
     // libavcodec
+    static inline avcodec_version_func avcodec_version_f{};
+    static inline avcodec_configuration_func avcodec_configuration_f{};
     static inline avcodec_free_context_func avcodec_free_context_f{};
     static inline av_packet_free_func av_packet_free_f{};
     avcodec_find_encoder_func avcodec_find_encoder_f{};
