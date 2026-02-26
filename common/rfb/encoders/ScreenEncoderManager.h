@@ -83,7 +83,7 @@ namespace rfb {
             return screens.end();
         }
 
-        explicit ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::EncoderConfig encoder,
+        explicit ScreenEncoderManager(const FFmpeg &ffmpeg_, const KasmVideoEncoders::EncoderConfig &encoder,
             const KasmVideoEncoders::EncoderConfigs &encoders, SConnection *conn, VideoEncoderParams params);
         ~ScreenEncoderManager() override;
 
@@ -93,7 +93,7 @@ namespace rfb {
         ScreenEncoderManager &operator=(ScreenEncoderManager &&) = delete;
 
         void clear();
-        void set_params(KasmVideoEncoders::EncoderConfig encoder, const KasmVideoEncoders::EncoderConfigs &encoders,
+        void set_params(const KasmVideoEncoders::EncoderConfig &encoder, const KasmVideoEncoders::EncoderConfigs &encoders,
             VideoEncoderParams params);
 
         bool sync_layout(const ScreenSet &layout, const Region &region);
@@ -104,7 +104,8 @@ namespace rfb {
         // Encoder
         [[nodiscard]] bool isSupported() const override;
 
-        void writeRect(const PixelBuffer *pb, const Palette &palette) override;
+        bool writeFrame(const PixelBuffer *pb, const Palette &palette);
+        void writeRect(const PixelBuffer *pb, const Palette &palette) override {}
         void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
 
     private:

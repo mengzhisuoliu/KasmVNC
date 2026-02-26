@@ -505,7 +505,8 @@ bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, 
         return false;
 
     static const Palette palette;
-    screen_encoder_manager->writeRect(pb, palette);
+    if (!screen_encoder_manager->writeFrame(pb, palette))
+        return false;
 
     std::vector<Rect> rects;
     changed.get_rects(&rects);

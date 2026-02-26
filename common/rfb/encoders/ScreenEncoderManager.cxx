@@ -30,7 +30,7 @@ namespace rfb {
     static LogWriter vlog("ScreenEncoderManager");
 
     template<uint8_t T>
-    ScreenEncoderManager<T>::ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::EncoderConfig encoder,
+    ScreenEncoderManager<T>::ScreenEncoderManager(const FFmpeg &ffmpeg_, const KasmVideoEncoders::EncoderConfig &encoder,
         const KasmVideoEncoders::EncoderConfigs &encoders, SConnection *conn, VideoEncoderParams params) :
         Encoder(conn, encodingKasmVideo, static_cast<EncoderFlags>(EncoderUseNativePF | EncoderLossy), -1),
         ffmpeg(ffmpeg_),
@@ -55,7 +55,7 @@ namespace rfb {
     }
 
     template<uint8_t T>
-    void ScreenEncoderManager<T>::set_params(KasmVideoEncoders::EncoderConfig encoder,
+    void ScreenEncoderManager<T>::set_params(const KasmVideoEncoders::EncoderConfig &encoder,
         const KasmVideoEncoders::EncoderConfigs &encoders, VideoEncoderParams params) {
         base_video_encoder = encoder;
         available_encoders = encoders;
@@ -109,9 +109,9 @@ namespace rfb {
             delete screens[index].encoder;
             screens[index].encoder = nullptr;
 
-            mask &= ~(1 << index);
             --count;
         }
+        mask &= ~(1 << index);
         screens[index] = {};
     }
 
@@ -131,8 +131,12 @@ namespace rfb {
 
     template<uint8_t T>
     void ScreenEncoderManager<T>::clear_screens() {
-        for (uint8_t i = 0; i < get_screen_count(); ++i)
-            remove_screen(i);
+        uint64_t remaining_mask = mask;
+        while (remaining_mask) {
+            const auto pos = __builtin_ctzll(remaining_mask);
+            remove_screen(pos);
+            remaining_mask &= remaining_mask - 1;
+        }
     }
 
     template<uint8_t T>
@@ -149,8 +153,8 @@ namespace rfb {
         for (uint8_t i = 0; i < static_cast<uint8_t>(layout.num_screens()); ++i) {
             const auto &screen = layout.screens[i];
             auto id = screen.id;
-            if (id > T) {
-                vlog.error("Wrong  id");
+            if (id >= T) {
+                vlog.error("Wrong id");
                 id = 0;
             }
 
@@ -178,21 +182,16 @@ namespace rfb {
     }
 
     template<uint8_t T>
-    void ScreenEncoderManager<T>::writeRect(const PixelBuffer *pb, const Palette &palette) {
-        // if (!pb) {
-        //     vlog.error("writeRect called with null PixelBuffer");
-        //     return;
-        // }
-
+    bool ScreenEncoderManager<T>::writeFrame(const PixelBuffer *pb, const Palette &palette) {
         if (screens_to_refresh.empty())
-            return;
+            return true;
 
         const auto bpp = conn->cp.pf().bpp >> 3;
         auto *out_conn = conn->getOutStream(conn->cp.supportsUdp);
 
         if (!out_conn) {
             vlog.error("writeRect: getOutStream returned NULL");
-            return;
+            return false;
         }
 
         const auto send_frame = [this, &bpp, out_conn, pb, &palette](screen_t &screen) {
@@ -218,12 +217,22 @@ namespace rfb {
         };
 
         if (screens_to_refresh.size() > 1) {
-            tbb::parallel_for_each(screens_to_refresh.begin(), screens_to_refresh.end(), [this, pb, &send_frame](uint8_t index) {
+            tbb::task_group_context ctx;
+
+            tbb::parallel_for_each(screens_to_refresh.begin(), screens_to_refresh.end(), [this, pb, &ctx](uint8_t index) {
+                if (ctx.is_group_execution_cancelled())
+                    return;
+
                 auto &screen = screens[index];
                 if (auto *encoder = screen.encoder; encoder) {
                     screen.dirty = encoder->render(pb);
+                    if (!screen.dirty)
+                        ctx.cancel_group_execution();
                 }
             });
+
+            if (ctx.is_group_execution_cancelled())
+                return false;
 
             for (auto index: screens_to_refresh) {
                 auto &screen = screens[index];
@@ -235,8 +244,12 @@ namespace rfb {
             if (auto encoder = screens[head].encoder; encoder) {
                 if (encoder->render(pb))
                     send_frame(screens[head]);
+                else
+                    return false;
             }
         }
+
+        return true;
     }
 
     template<uint8_t T>
