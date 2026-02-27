@@ -26,7 +26,7 @@ namespace rfb {
             // av1_ffmpeg_vaapi
             EncoderConfiguration{0, 0, {}},
             // av1_nvenc
-            EncoderConfiguration{0, 0, {}},
+            EncoderConfiguration{0, 63, {18, 23, 28, 39, 63}},
             // av1_software
             EncoderConfiguration{0, 0, {}},
 
