@@ -319,7 +319,7 @@ namespace rfb {
         }
 
         if (err < 0) {
-            vlog.error("Error receiving packet from codec");
+            vlog.error("Error receiving packet from codec: %d", err);
             return false;
         }
 
