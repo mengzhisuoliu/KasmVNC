@@ -550,26 +550,55 @@ namespace rfb {
     return buffer;
   }
 
-  unsigned msBetween(const struct timeval *first,
-                     const struct timeval *second)
+  template <TimeType T>
+  unsigned msBetween(const T *first, const T *second)
   {
-    unsigned diff;
+      unsigned diff = (second->tv_sec - first->tv_sec) * 1000;
 
-    diff = (second->tv_sec - first->tv_sec) * 1000;
+      if constexpr (std::is_same_v<T, timeval>) {
+          diff += second->tv_usec / 1000;
+          diff -= first->tv_usec / 1000;
+      } else {
+          diff += (second->tv_nsec - first->tv_nsec) / 1000000;
+      }
 
-    diff += second->tv_usec / 1000;
-    diff -= first->tv_usec / 1000;
-
-    return diff;
+      return diff;
   }
 
-  unsigned msSince(const struct timeval *then)
-  {
-    struct timeval now;
+  template <TimeType T>
+  uint64_t usBetween(const T *first, const T *second) {
+      int64_t diff = (second->tv_sec - first->tv_sec) * 1000000;
 
-    gettimeofday(&now, NULL);
+      if constexpr (std::is_same_v<T, timeval>) {
+          diff += second->tv_usec - first->tv_usec;
+      } else {
+          diff += (second->tv_nsec - first->tv_nsec) / 1000;
+      }
+
+      return diff;
+  }
+
+  template <TimeType T>
+  unsigned msSince(const T *then)
+  {
+      T now;
+      if constexpr (std::is_same_v<T, timeval>)
+          gettimeofday(&now, NULL);
+      else
+          clock_gettime(CLOCK_MONOTONIC, &now);
 
     return msBetween(then, &now);
+  }
+
+  template <TimeType T>
+  uint64_t usSince(const T *then) {
+      T now;
+      if constexpr (std::is_same_v<T, timeval>)
+          gettimeofday(&now, nullptr);
+      else
+          clock_gettime(CLOCK_MONOTONIC, &now);
+
+      return usBetween(then, &now);
   }
 
   uint64_t elapsedMs(std::chrono::high_resolution_clock::time_point start)
@@ -682,5 +711,15 @@ namespace rfb {
     usersList = "{\"users\": " + usersList + "} ";
     return usersList;
   }
+
+    template unsigned msBetween<timeval>(const timeval *first, const timeval *second);
+    template unsigned msBetween<timespec>(const timespec *first, const timespec *second);
+    template uint64_t usBetween<timeval>(const timeval *first, const timeval *second);
+    template uint64_t usBetween<timespec>(const timespec *first, const timespec *second);
+
+    template unsigned msSince<timeval>(const timeval *then);
+    template unsigned msSince<timespec>(const timespec *then);
+    template uint64_t usSince<timeval>(const timeval *then);
+    template uint64_t usSince<timespec>(const timespec *then);
 };
 
