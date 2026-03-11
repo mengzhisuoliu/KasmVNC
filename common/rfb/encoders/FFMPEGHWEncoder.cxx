@@ -93,8 +93,6 @@ namespace rfb {
         ctx->pix_fmt = AVPixFmt;
         ctx_guard->width = current_params.width;
         ctx_guard->height = current_params.height;
-        ctx_guard->coded_width = current_params.width;
-        ctx_guard->coded_height = current_params.height;
         ctx->delay = 0;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
