@@ -1115,10 +1115,8 @@ void VNCServerST::writeUpdate()
   }
   const rdr::U8 origtrackingFrameStats = trackingFrameStats;
 
-  EncodeManager::codecstats_t jpegstats, webpstats;
+  EncodeManager::codecstats_t jpegstats{}, webpstats{};
   unsigned enctime = 0, scaletime = 0;
-  memset(&jpegstats, 0, sizeof(EncodeManager::codecstats_t));
-  memset(&webpstats, 0, sizeof(EncodeManager::codecstats_t));
 
   if (watermarkData)
       updateWatermark();
