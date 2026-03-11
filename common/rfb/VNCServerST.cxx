@@ -1121,39 +1121,37 @@ void VNCServerST::writeUpdate()
   if (watermarkData)
       updateWatermark();
 
-  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
-    ci_next = ci; ci_next++;
-
+  for (auto client : clients) {
     if (permcheck)
-      (*ci)->recheckPerms();
+      client->recheckPerms();
 
     if (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_ALL ||
         (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_OWNER &&
-         (*ci)->is_owner()) ||
+         client->is_owner()) ||
         (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_SPECIFIC &&
-         strstr((*ci)->getPeerEndpoint(), trackingClient))) {
+         strstr(client->getPeerEndpoint(), trackingClient))) {
 
-      (*ci)->setFrameTracking();
+      client->setFrameTracking();
 
       // Only one owner
       if (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_OWNER)
         trackingFrameStats = network::GetAPIMessager::WANT_FRAME_STATS_SERVERONLY;
     }
 
-    (*ci)->add_copied(ui.copied, ui.copy_delta);
-    (*ci)->add_copypassed(ui.copypassed);
-    (*ci)->add_changed(ui.changed);
-    (*ci)->writeFramebufferUpdateOrClose();
+    client->add_copied(ui.copied, ui.copy_delta);
+    client->add_copypassed(ui.copypassed);
+    client->add_changed(ui.changed);
+    client->writeFramebufferUpdateOrClose();
 
-    if (((network::UdpStream *)(*ci)->getOutStream(true))->isFailed()) {
-      ((network::UdpStream *)(*ci)->getOutStream(true))->clearFailed();
-      (*ci)->udpDowngrade(true);
+    if (((network::UdpStream *)client->getOutStream(true))->isFailed()) {
+      ((network::UdpStream *)client->getOutStream(true))->clearFailed();
+      client->udpDowngrade(true);
     }
 
     if (apimessager) {
-      (*ci)->sendStats(false);
-      const EncodeManager::codecstats_t subjpeg = (*ci)->getJpegStats();
-      const EncodeManager::codecstats_t subwebp = (*ci)->getWebpStats();
+      client->sendStats(false);
+      const EncodeManager::codecstats_t subjpeg = client->getJpegStats();
+      const EncodeManager::codecstats_t subwebp = client->getWebpStats();
 
       jpegstats.ms += subjpeg.ms;
       jpegstats.area += subjpeg.area;
@@ -1163,8 +1161,8 @@ void VNCServerST::writeUpdate()
       webpstats.area += subwebp.area;
       webpstats.rects += subwebp.rects;
 
-      enctime += (*ci)->getEncodingTime();
-      scaletime += (*ci)->getScalingTime();
+      enctime += client->getEncodingTime();
+      scaletime += client->getScalingTime();
     }
   }
 
