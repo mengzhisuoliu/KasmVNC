@@ -1046,7 +1046,7 @@ void VNCServerST::writeUpdate()
   }
 
   comparer->getUpdateInfo(&ui, pb->getRect());
-  toCheck = ui.changed.union_(ui.copied);
+  Region toCheck = ui.changed.union_(ui.copied);
 
   Region cursorReg;
   if (needRenderedCursor()) {
@@ -1066,22 +1066,22 @@ void VNCServerST::writeUpdate()
   else
     comparer->disable();
 
-  struct timeval beforeAnalysis;
-  gettimeofday(&beforeAnalysis, NULL);
-
+  TRACE_STOPWATCH(beforeAnalysis);
+  DEBUG_STOPWATCH(comparer_timer);
   // Skip scroll detection if the client is slow, and didn't get the previous one yet
   if (!video_streaming_enabled && comparer->compare(clients.size() == 1 && (*clients.begin())->has_copypassed(),
                         cursorReg))
     comparer->getUpdateInfo(&ui, pb->getRect());
 
   comparer->clear();
-
-  const unsigned analysisMs = msSince(&beforeAnalysis);
+  DEBUG_STOPWATCH_PRINT_US(slog, comparer_timer);
+  TRACE_STOPWATCH_END_MS(beforeAnalysis, analysisMs);
 
   encCache.clear();
   encCache.enabled = clients.size() > 1;
 
   // Check if the password file was updated
+  DEBUG_STOPWATCH(perm_check);
   bool permcheck = false;
   if (inotify_fd >= 0) {
     char buf[256];
