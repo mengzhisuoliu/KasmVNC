@@ -1024,15 +1024,11 @@ void VNCServerST::blackOut()
 void VNCServerST::writeUpdate()
 {
   UpdateInfo ui;
-  Region toCheck;
-
-  std::list<VNCSConnectionST*>::iterator ci, ci_next;
 
   assert(blockCounter == 0);
   assert(desktopStarted);
 
-  struct timeval start;
-  gettimeofday(&start, NULL);
+  TRACE_STOPWATCH(start);
 
   if (DLPRegion.enabled) {
     comparer->enable_copyrect(false);
@@ -1042,6 +1038,11 @@ void VNCServerST::writeUpdate()
   if (watermarkData && Server::DLP_WatermarkText[0] && watermarkTextNeedsUpdate(true)) {
     // The text may have changed
     sendWatermark = true;
+  }
+
+  bool video_streaming_enabled = true;
+  for (auto client : clients) {
+      video_streaming_enabled &= client->cp.encoder_config.encoder != KasmVideoEncoders::Encoder::unavailable;
   }
 
   comparer->getUpdateInfo(&ui, pb->getRect());
@@ -1069,7 +1070,7 @@ void VNCServerST::writeUpdate()
   gettimeofday(&beforeAnalysis, NULL);
 
   // Skip scroll detection if the client is slow, and didn't get the previous one yet
-  if (comparer->compare(clients.size() == 1 && (*clients.begin())->has_copypassed(),
+  if (!video_streaming_enabled && comparer->compare(clients.size() == 1 && (*clients.begin())->has_copypassed(),
                         cursorReg))
     comparer->getUpdateInfo(&ui, pb->getRect());
 
@@ -1102,10 +1103,10 @@ void VNCServerST::writeUpdate()
     }
   }
 
+  DEBUG_STOPWATCH_PRINT_US(slog, perm_check);
   unsigned shottime = 0;
   if (apimessager) {
-    struct timeval shotstart;
-    gettimeofday(&shotstart, NULL);
+    TRACE_STOPWATCH(shotstart);
     apimessager->mainUpdateScreen(pb);
     shottime = msSince(&shotstart);
 
