@@ -205,21 +205,21 @@ namespace rfb {
     log.debug("Time "#name": %u ms", name##_end)
 
 #define COARSE_STOPWATCH(name)                      \
-    timespec name;                              \
+    timespec name{};                                \
     clock_gettime(CLOCK_MONOTONIC_COARSE, &name)
 
 #define COARSE_STOPWATCH_PRINT_MS(log, name)        STOPWATCH_PRINT_MS(log, name)
 
 #define MONOTONIC_STOPWATCH(name)                   \
-    timespec name;                              \
+    timespec name{};                                \
     clock_gettime(CLOCK_MONOTONIC, &name)
 
 #define MONOTONIC_STOPWATCH_PRINT_US(log, name)     STOPWATCH_PRINT_US(log, name)
 
 #define MONOTONIC_STOPWATCH_PRINT_MS(log, name)     STOPWATCH_PRINT_MS(log, name)
 
-#define TIMEOFDAY_STOPWATCH(name)                     \
-    timeval name;                               \
+#define TIMEOFDAY_STOPWATCH(name)                   \
+    timeval name{};                                 \
     gettimeofday(&name, nullptr)
 
 #define TIMEOFDAY_STOPWATCH_PRINT_MS(log, name)       STOPWATCH_PRINT_MS(log, name)
