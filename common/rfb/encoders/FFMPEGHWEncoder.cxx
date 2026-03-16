@@ -43,7 +43,7 @@ namespace rfb {
         AVBufferRef *hw_device_ctx{};
         int err{};
 
-        vlog.debug("Constructor: HWDeviceType=%d, AVPixFmt=%d, encoder=%s, dri_node=%s",
+        DEBUG_LOG(vlog, "Constructor: HWDeviceType=%d, AVPixFmt=%d, encoder=%s, dri_node=%s",
                    HWDeviceType, AVPixFmt, KasmVideoEncoders::to_string(encoder),
                    dri_node_ ? dri_node_ : "null");
 
@@ -53,7 +53,7 @@ namespace rfb {
 
         hw_device_ctx_guard.reset(hw_device_ctx);
         const auto *enc_name = KasmVideoEncoders::to_string(encoder);
-        vlog.debug("Looking for encoder: %s", enc_name);
+        DEBUG_LOG(vlog, "Looking for encoder: %s", enc_name);
         codec = ffmpeg.avcodec_find_encoder_by_name(enc_name);
         if (!codec)
             throw std::runtime_error(fmt::format("Could not find {} encoder", enc_name));
@@ -96,7 +96,7 @@ namespace rfb {
         ctx->delay = 0;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
-        vlog.debug("Encoder context config: pix_fmt=%d, width=%d, height=%d, coded_width=%d, coded_height=%d, framerate=%d, gop=%d, quality=%d",
+        DEBUG_LOG(vlog, "Encoder context config: pix_fmt=%d, width=%d, height=%d, coded_width=%d, coded_height=%d, framerate=%d, gop=%d, quality=%d",
                    ctx->pix_fmt, ctx->width, ctx->height, ctx->coded_width, ctx->coded_height,
                    current_params.frame_rate, current_params.group_of_picture, current_params.quality);
 
@@ -167,14 +167,14 @@ namespace rfb {
         frames_ctx->height = current_params.height;
         frames_ctx->initial_pool_size = 20;
 
-        vlog.debug("HW frame context config: format=%d (AVPixFmt template), sw_format=%d (NV12), width=%d, height=%d, pool_size=20",
+        DEBUG_LOG(vlog, "HW frame context config: format=%d (AVPixFmt template), sw_format=%d (NV12), width=%d, height=%d, pool_size=20",
                    frames_ctx->format, frames_ctx->sw_format, frames_ctx->width, frames_ctx->height);
 
         if (err = ffmpeg.av_hwframe_ctx_init(hw_frames_ctx); err < 0) {
             vlog.error("Failed to initialize HW frame context (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
-        vlog.debug("HW frame context initialized successfully");
+        DEBUG_LOG(vlog, "HW frame context initialized successfully");
 
         FFmpeg::av_buffer_unref(&ctx_guard->hw_frames_ctx);
 
@@ -196,14 +196,14 @@ namespace rfb {
         frame->height = params.height;
         frame->pict_type = AV_PICTURE_TYPE_I;
 
-        vlog.debug("SW frame config: format=%d (NV12), width=%d, height=%d", frame->format, frame->width, frame->height);
+        DEBUG_LOG(vlog, "SW frame config: format=%d (NV12), width=%d, height=%d", frame->format, frame->width, frame->height);
 
         if (ffmpeg.av_frame_get_buffer(frame, 0) < 0) {
             vlog.error("Could not allocate sw-frame data");
             return false;
         }
 
-        vlog.debug("SW frame allocated: linesize[0]=%d, linesize[1]=%d", frame->linesize[0], frame->linesize[1]);
+        DEBUG_LOG(vlog, "SW frame allocated: linesize[0]=%d, linesize[1]=%d", frame->linesize[0], frame->linesize[1]);
 
         auto *hw_frame = ffmpeg.av_frame_alloc();
         if (!hw_frame) {
@@ -217,12 +217,12 @@ namespace rfb {
             return false;
         }
 
-        vlog.debug("Opening codec: %s", codec->name);
+        DEBUG_LOG(vlog, "Opening codec: %s", codec->name);
         if (err = ffmpeg.avcodec_open2(ctx_guard.get(), codec, nullptr); err < 0) {
             vlog.error("Failed to open codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
-        vlog.debug("Codec opened successfully");
+        DEBUG_LOG(vlog, "Codec opened successfully");
 #if defined(FFMPEG_FILTER)
         const char* filters = "format=nv12,hwupload";  // Or "scale_vaapi=format=nv12" for explicit VAAPI scaler
         ffmpeg.avfilter_graph_parse_ptr(filter_graph, filters, &inputs, &outputs, nullptr);
@@ -266,7 +266,7 @@ namespace rfb {
             static_cast<uint8_t>(Server::groupOfPicture),
             static_cast<uint8_t>(Server::videoQualityCRFCQP)};
 
-        vlog.info("render(): Creating VideoEncoderParams: width=%d, height=%d, frameRate=%d (Server::frameRate=%d), GOP=%d, quality=%d",
+        DEBUG_LOG(vlog, "render(): Creating VideoEncoderParams: width=%d, height=%d, frameRate=%d (Server::frameRate=%d), GOP=%d, quality=%d",
                   dst_width, dst_height, static_cast<uint8_t>(Server::frameRate), (int)Server::frameRate,
                   static_cast<uint8_t>(Server::groupOfPicture), static_cast<uint8_t>(Server::videoQualityCRFCQP));
 
@@ -284,13 +284,13 @@ namespace rfb {
 
         const int src_stride_bytes = stride * bpp;
 
-        vlog.debug("render(): width=%d, height=%d, dst_width=%d, dst_height=%d, stride=%d pixels, stride_bytes=%d, bpp=%d",
+        DEBUG_LOG(vlog, "render(): width=%d, height=%d, dst_width=%d, dst_height=%d, stride=%d pixels, stride_bytes=%d, bpp=%d",
                    width, height, dst_width, dst_height, stride, src_stride_bytes, bpp);
 
         int err{};
 
 #if defined(LIBYUV_CONVERSION)
-        vlog.debug("Converting ARGB to NV12: src_stride=%d, dst_linesize[0]=%d, dst_linesize[1]=%d, dst_width=%d, dst_height=%d",
+        DEBUG_LOG(vlog, "Converting ARGB to NV12: src_stride=%d, dst_linesize[0]=%d, dst_linesize[1]=%d, dst_width=%d, dst_height=%d",
                    src_stride_bytes, frame->linesize[0], frame->linesize[1], dst_width, dst_height);
 
         if (err = libyuv::ARGBToNV12(buffer, src_stride_bytes, frame->data[0], frame->linesize[0],
@@ -298,13 +298,13 @@ namespace rfb {
             vlog.error("libyuv::ARGBToNV12 failed with code: %d", err);
             return false;
         }
-        vlog.debug("ARGB to NV12 conversion successful");
+        DEBUG_LOG(vlog, "ARGB to NV12 conversion successful");
 #endif
 
 
         frame->pts = pts++;
 
-        vlog.debug("SW frame before transfer: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
+        DEBUG_LOG(vlog, "SW frame before transfer: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
                    frame->format, frame->width, frame->height, frame->linesize[0], frame->linesize[1], frame->pts);
 
         if (err = ffmpeg.av_hwframe_transfer_data(hw_frame_guard.get(), frame, 0); err < 0) {
@@ -312,29 +312,29 @@ namespace rfb {
                 "Error while transferring frame data to surface (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
-        vlog.debug("Frame transfer successful");
+        DEBUG_LOG(vlog, "Frame transfer successful");
 
         auto *hw_frame = hw_frame_guard.get();
-        vlog.debug("HW frame before send: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
+        DEBUG_LOG(vlog, "HW frame before send: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
                    hw_frame->format, hw_frame->width, hw_frame->height, hw_frame->linesize[0], hw_frame->linesize[1], hw_frame->pts);
 
         if (err = ffmpeg.avcodec_send_frame(ctx_guard.get(), hw_frame_guard.get()); err < 0) {
             vlog.error("Error sending frame to codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
-        vlog.debug("Frame sent to codec successfully");
+        DEBUG_LOG(vlog, "Frame sent to codec successfully");
 
         auto *pkt = pkt_guard.get();
 
         err = ffmpeg.avcodec_receive_packet(ctx_guard.get(), pkt);
         if (err == AVERROR(EAGAIN)) {
             // Encoder needs more frames before producing output - this is normal
-            vlog.debug("Encoder buffering frame (EAGAIN) - waiting for more input");
+            DEBUG_LOG(vlog, "Encoder buffering frame (EAGAIN) - waiting for more input");
             return true;
         }
 
         if (err == AVERROR_EOF) {
-            vlog.debug("Encoder EOF reached");
+            DEBUG_LOG(vlog, "Encoder EOF reached");
             return false;
         }
 
@@ -344,7 +344,7 @@ namespace rfb {
         }
 
         if (pkt->flags & AV_PKT_FLAG_KEY) {
-            vlog.debug("Key frame %ld", frame->pts);
+            DEBUG_LOG(vlog, "Key frame %ld", frame->pts);
 
             // Log codec header (extradata - contains SPS/PPS for H.264)
             if (ctx_guard->extradata && ctx_guard->extradata_size > 0) {
@@ -398,7 +398,7 @@ namespace rfb {
             }
 
             // Also log first bytes of the keyframe packet itself
-            vlog.info("Keyframe packet size: %d, first bytes: %02x %02x %02x %02x %02x",
+            DEBUG_LOG(vlog, "Keyframe packet size: %d, first bytes: %02x %02x %02x %02x %02x",
                 pkt->size, pkt->data[0], pkt->data[1], pkt->data[2], pkt->data[3], pkt->data[4]);
         }
 
@@ -414,7 +414,7 @@ namespace rfb {
         os->writeU8(pkt->flags & AV_PKT_FLAG_KEY);
         encoders::write_compact(os, pkt->size);
         os->writeBytes(&pkt->data[0], pkt->size);
-        vlog.debug("Screen id %d, codec %d, frame size:  %d", layout.id, msg_codec_id, pkt->size);
+        DEBUG_LOG(vlog, "Screen id %d, codec %d, frame size:  %d", layout.id, msg_codec_id, pkt->size);
 
         ffmpeg.av_packet_unref(pkt);
     }
