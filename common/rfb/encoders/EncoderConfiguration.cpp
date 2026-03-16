@@ -16,6 +16,9 @@
  * USA.
  */
 #include "EncoderConfiguration.h"
+extern "C" {
+#include "libavcodec/avcodec.h"
+}
 
 namespace rfb {
     EncoderConfiguration::Range h264_quality_range = {0, 51};
@@ -30,7 +33,7 @@ namespace rfb {
             // av1_nvenc
             EncoderConfiguration{av1_quality_range, av1_quality_range, {18, 23, 28, 39, 63}},
             // av1_software
-            EncoderConfiguration{av1_quality_range, av1_quality_range, {18, 23, 28, 39, 63}},
+            EncoderConfiguration{av1_quality_range, av1_quality_range, {18, 23, 28, 39, 63}, FF_PROFILE_AV1_MAIN},
 
             // H.265
             // h265_vaapi
@@ -40,7 +43,7 @@ namespace rfb {
             // h265_nvenc
             EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h265_software
-            EncoderConfiguration{h264_quality_range, {0, 50}, {18, 23, 28, 39, 50}},
+            EncoderConfiguration{h264_quality_range, {0, 50}, {18, 23, 28, 39, 50}, FF_PROFILE_HEVC_MAIN},
 
             // H.264
             // h264_vaapi
@@ -50,7 +53,7 @@ namespace rfb {
             // h264_nvenc
             EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h264_software
-            EncoderConfiguration{h264_quality_range, {0, 50}, {9, 18, 25, 39, 50}},
+            EncoderConfiguration{h264_quality_range, {0, 50}, {9, 18, 25, 39, 50}, FF_PROFILE_H264_CONSTRAINED_BASELINE},
 
             EncoderConfiguration{}
     };

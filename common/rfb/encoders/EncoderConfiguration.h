@@ -43,6 +43,7 @@ namespace rfb {
 
         // std::vector<CodecOption> codecOptions{};
         std::array<rdr::S32, MAX_PRESETS> presets{};
+        rdr::S32 profile{};
 
         static const EncoderConfiguration &get_configuration(KasmVideoEncoders::Encoder encoder);
     };

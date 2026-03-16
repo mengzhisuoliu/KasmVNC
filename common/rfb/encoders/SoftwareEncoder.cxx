@@ -24,6 +24,7 @@
 #include <rfb/ffmpeg.h>
 #include <fmt/format.h>
 #include <rfb/encoders/utils.h>
+#include "EncoderConfiguration.h"
 
 static rfb::LogWriter vlog("SoftwareEncoder");
 
@@ -174,6 +175,7 @@ namespace rfb {
         // ctx->pix_fmt = AV_PIX_FMT_YUV444P; // AV_PIX_FMT_YUV420P;
         ctx->pix_fmt = AV_PIX_FMT_YUV420P;
         ctx->max_b_frames = 0; // No B-frames for immediate output
+        ctx->profile = EncoderConfiguration::get_configuration(encoder).profile;
 
         // HIGH
         // if (ffmpeg.av_opt_set(ctx->priv_data, "tune", "zerolatency,stillimage", 0) != 0)
