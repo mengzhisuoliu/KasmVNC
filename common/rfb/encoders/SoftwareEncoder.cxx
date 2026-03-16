@@ -16,10 +16,6 @@
  * USA.
  */
 #include "SoftwareEncoder.h"
-extern "C" {
-#include <libavutil/imgutils.h>
-#include <libavutil/opt.h>
-}
 #include "KasmVideoConstants.h"
 #include <rfb/LogWriter.h>
 #include <rfb/SConnection.h>

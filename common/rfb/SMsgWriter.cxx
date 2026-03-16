@@ -786,13 +786,13 @@ void SMsgWriter::writeVideoEncoders(const std::vector<int32_t> &encoders) {
     for (auto encoder: conjunction) {
         os->writeS32(encoder);
 
-        const auto &config = EncoderConfiguration::get_configuration(KasmVideoEncoders::from_encoding(encoder));
+        const auto &[min_quality, max_quality, presets] = EncoderConfiguration::get_configuration(KasmVideoEncoders::from_encoding(encoder));
 
-        os->writeS32(config.min_quality);
-        os->writeS32(config.max_quality);
+        os->writeS32(min_quality);
+        os->writeS32(max_quality);
 
-        os->writeU8(config.presets.size());
-        for (const auto &preset_value: config.presets) {
+        os->writeU8(presets.size());
+        for (const auto &preset_value: presets) {
             os->writeS32(preset_value);
         }
     }

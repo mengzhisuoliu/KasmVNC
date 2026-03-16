@@ -38,7 +38,7 @@ namespace rfb {
             // h265_nvenc
             EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
             // h265_software
-            EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
+            EncoderConfiguration{0, 50, {18, 23, 28, 39, 50}},
 
             // H.264
             // h264_vaapi
@@ -48,7 +48,7 @@ namespace rfb {
             // h264_nvenc
             EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
             // h264_software
-            EncoderConfiguration{1, 51, {9, 18, 25, 39, 51}},
+            EncoderConfiguration{0, 50, {9, 18, 25, 39, 50}},
 
             EncoderConfiguration{}
     };
