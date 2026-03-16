@@ -18,37 +18,39 @@
 #include "EncoderConfiguration.h"
 
 namespace rfb {
+    EncoderConfiguration::Range h264_quality_range = {0, 51};
+    EncoderConfiguration::Range av1_quality_range = {0, 63};
     static inline std::array<EncoderConfiguration, static_cast<size_t>(KasmVideoEncoders::Encoder::unavailable) + 1> EncoderConfigurations =
         {
             // AV1
             // av1_vaapi
-            EncoderConfiguration{0, 0, {}},
+            EncoderConfiguration{av1_quality_range, av1_quality_range, {}},
             // av1_ffmpeg_vaapi
-            EncoderConfiguration{0, 0, {}},
+            EncoderConfiguration{av1_quality_range, av1_quality_range, {}},
             // av1_nvenc
-            EncoderConfiguration{0, 63, {18, 23, 28, 39, 63}},
+            EncoderConfiguration{av1_quality_range, av1_quality_range, {18, 23, 28, 39, 63}},
             // av1_software
-            EncoderConfiguration{0, 0, {}},
+            EncoderConfiguration{av1_quality_range, av1_quality_range, {18, 23, 28, 39, 63}},
 
             // H.265
             // h265_vaapi
-            EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
+            EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h265_ffmpeg_vaapi
-            EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
+            EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h265_nvenc
-            EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
+            EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h265_software
-            EncoderConfiguration{0, 50, {18, 23, 28, 39, 50}},
+            EncoderConfiguration{h264_quality_range, {0, 50}, {18, 23, 28, 39, 50}},
 
             // H.264
             // h264_vaapi
-            EncoderConfiguration{0, 51, {18, 23, 28, 33, 51}},
+            EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 33, 51}},
             // h264_ffmpeg_vaapi
-            EncoderConfiguration{0, 51, {12, 16, 25, 39, 51}},
+            EncoderConfiguration{h264_quality_range, h264_quality_range, {12, 16, 25, 39, 51}},
             // h264_nvenc
-            EncoderConfiguration{0, 51, {18, 23, 28, 39, 51}},
+            EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h264_software
-            EncoderConfiguration{0, 50, {9, 18, 25, 39, 50}},
+            EncoderConfiguration{h264_quality_range, {0, 50}, {9, 18, 25, 39, 50}},
 
             EncoderConfiguration{}
     };

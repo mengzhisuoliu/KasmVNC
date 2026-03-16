@@ -359,7 +359,7 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
 
     if (encodings[i] >= pseudoEncodingStreamingVideoQualityLevel0 && encodings[i] <= pseudoEncodingStreamingVideoQualityLevel63) {
         const auto &config = EncoderConfiguration::get_configuration(encoder_config.encoder);
-        const auto value = config.max_quality - encodings[i] + pseudoEncodingStreamingVideoQualityLevel0;
+        const auto value = config.quality.max - encodings[i] + pseudoEncodingStreamingVideoQualityLevel0;
         if (can_apply)
             Server::videoQualityCRFCQP.setParam(value);
         clientparlog("videoQualityCRFCQP", value, can_apply);

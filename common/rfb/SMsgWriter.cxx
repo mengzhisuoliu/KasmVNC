@@ -786,10 +786,10 @@ void SMsgWriter::writeVideoEncoders(const std::vector<int32_t> &encoders) {
     for (auto encoder: conjunction) {
         os->writeS32(encoder);
 
-        const auto &[min_quality, max_quality, presets] = EncoderConfiguration::get_configuration(KasmVideoEncoders::from_encoding(encoder));
+        const auto &[_, allowed_quality, presets] = EncoderConfiguration::get_configuration(KasmVideoEncoders::from_encoding(encoder));
 
-        os->writeS32(min_quality);
-        os->writeS32(max_quality);
+        os->writeS32(allowed_quality.min);
+        os->writeS32(allowed_quality.max);
 
         os->writeU8(presets.size());
         for (const auto &preset_value: presets) {
