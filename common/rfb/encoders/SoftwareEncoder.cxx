@@ -124,7 +124,7 @@ namespace rfb {
         }
 
         if (pkt->flags & AV_PKT_FLAG_KEY)
-            vlog.debug("Key frame %ld", frame->pts);
+            DEBUG_LOG(vlog, "Key frame %ld", frame->pts);
 
         return true;
     }
@@ -138,7 +138,7 @@ namespace rfb {
         os->writeU8(pkt->flags & AV_PKT_FLAG_KEY);
         encoders::write_compact(os, pkt->size);
         os->writeBytes(&pkt->data[0], pkt->size);
-        vlog.debug("Screen id %d, codec %d, frame size:  %d", layout.id, msg_codec_id, pkt->size);
+        DEBUG_LOG(vlog, "Screen id %d, codec %d, frame size:  %d", layout.id, msg_codec_id, pkt->size);
 
         ffmpeg.av_packet_unref(pkt);
     }
