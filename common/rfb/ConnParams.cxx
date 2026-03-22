@@ -332,9 +332,10 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     }
 
     if (encodings[i] >= pseudoEncodingFrameRateLevel10 && encodings[i] <= pseudoEncodingFrameRateLevel60) {
+        const auto new_frame_rate = encodings[i] - pseudoEncodingFrameRateLevel10 + 10;
         if (can_apply)
-            Server::frameRate.setParam(encodings[i] - pseudoEncodingFrameRateLevel10 + 10);
-        clientparlog("frameRate", encodings[i] - pseudoEncodingFrameRateLevel10 + 10, can_apply);
+            Server::frameRate.setParam(new_frame_rate);
+        clientparlog("frameRate", new_frame_rate, can_apply);
     }
 
     if (encodings[i] >= pseudoEncodingVideoScalingLevel0 && encodings[i] <= pseudoEncodingVideoScalingLevel9) {
