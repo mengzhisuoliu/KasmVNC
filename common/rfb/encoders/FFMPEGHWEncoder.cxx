@@ -91,8 +91,8 @@ namespace rfb {
         ctx->gop_size = current_params.group_of_picture; // interval between I-frames
         ctx->max_b_frames = 0; // No B-frames for immediate output
         ctx->pix_fmt = AVPixFmt;
-        ctx_guard->width = current_params.width;
-        ctx_guard->height = current_params.height;
+        ctx->width = current_params.width;
+        ctx->height = current_params.height;
         ctx->delay = 0;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
@@ -301,20 +301,21 @@ namespace rfb {
         DEBUG_LOG(vlog, "ARGB to NV12 conversion successful");
 #endif
 
-
         frame->pts = pts++;
+        auto *hw_frame = hw_frame_guard.get();
 
         DEBUG_LOG(vlog, "SW frame before transfer: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
                    frame->format, frame->width, frame->height, frame->linesize[0], frame->linesize[1], frame->pts);
 
-        if (err = ffmpeg.av_hwframe_transfer_data(hw_frame_guard.get(), frame, 0); err < 0) {
+        if (err = ffmpeg.av_hwframe_transfer_data(hw_frame, frame, 0); err < 0) {
             vlog.error(
                 "Error while transferring frame data to surface (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
         DEBUG_LOG(vlog, "Frame transfer successful");
 
-        auto *hw_frame = hw_frame_guard.get();
+        hw_frame->pts = frame->pts;
+
         DEBUG_LOG(vlog, "HW frame before send: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
                    hw_frame->format, hw_frame->width, hw_frame->height, hw_frame->linesize[0], hw_frame->linesize[1], hw_frame->pts);
 
