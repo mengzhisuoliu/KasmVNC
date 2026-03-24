@@ -102,16 +102,18 @@ namespace rfb {
 
         if constexpr (HWDeviceType == AV_HWDEVICE_TYPE_CUDA && AVPixFmt == AV_PIX_FMT_CUDA) {
             // NVENC low-latency settings
-            if (ffmpeg.av_opt_set(ctx->priv_data, "preset", "p1", 0) < 0) {
-                vlog.info("Cannot set preset");
+            // Rate control mode: Constant Bit Rate (CBR)
+            if (ffmpeg.av_opt_set(ctx->priv_data, "rc", "vbr_hq", 0) < 0) {
+                vlog.info("Cannot set rc to cbr");
+            }
+
+
+            if (ffmpeg.av_opt_set(ctx->priv_data, "preset", "p4", 0) < 0) {
+                vlog.info("Cannot set preset to p1");
             }
 
             if (ffmpeg.av_opt_set(ctx->priv_data, "tune", "ull", 0) < 0) {
-                vlog.info("Cannot set tune");
-            }
-
-            if (ffmpeg.av_opt_set(ctx->priv_data, "rc", "constqp", 0) < 0) {
-                vlog.info("Cannot set rc to constqp");
+                vlog.info("Cannot set tune to ull (ultra-low-latency)");
             }
 
             if (ffmpeg.av_opt_set(ctx->priv_data, "zerolatency", "1", 0) < 0) {
@@ -122,22 +124,48 @@ namespace rfb {
                 vlog.info("Cannot set b_ref_mode");
             }
 
+            /*
             if (ffmpeg.av_opt_set(ctx->priv_data, "multipass", "disabled", 0) < 0) {
                 vlog.info("Cannot set multipass");
-            }
+            }*/
 
-            if (ffmpeg.av_opt_set(ctx->priv_data, "rc-lookahead", "0", 0) < 0) {
+            /*
+            if (ffmpeg.av_opt_set(ctx->priv_data, "rc-lookahead", "32", 0) < 0) {
                 vlog.info("Cannot set rc-lookahead");
+            }*/
+
+            // Set delay to 0
+            if (ffmpeg.av_opt_set(ctx->priv_data, "delay", "0", 0) < 0) {
+                vlog.info("Cannot set delay to 0");
             }
 
-            if (ffmpeg.av_opt_set_int(ctx->priv_data, "delay", 0, 0) < 0) {
-                vlog.info("Cannot set delay");
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "cq", current_params.quality, 0) < 0) {
+                vlog.info("Cannot set cq");
             }
 
-            if (ffmpeg.av_opt_set_int(ctx->priv_data, "qp", current_params.quality, 0) < 0) {
-                vlog.info("Cannot set qp");
+
+            /*
+            // Disable temporal AQ
+            if (ffmpeg.av_opt_set(ctx->priv_data, "temporal-aq", "1", 0) < 0) {
+                vlog.info("Cannot disable temporal-aq");
             }
 
+            // Disable spatial AQ
+            if (ffmpeg.av_opt_set(ctx->priv_data, "spatial-aq", "1", 0) < 0) {
+                vlog.info("Cannot disable spatial-aq");
+            }*/
+
+            // Disable SEI metadata to reduce bitstream overhead
+            /*if (ffmpeg.av_opt_set_int(ctx->priv_data, "extra_sei", 0, 0) < 0) {
+                vlog.info("Cannot set extra_sei (may not be supported)");
+            }
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "udu_sei", 0, 0) < 0) {
+                vlog.info("Cannot set udu_sei (may not be supported)");
+            }*/
+             /*  // Set DPB size to 0
+            if (ffmpeg.av_opt_set(ctx->priv_data, "dpb_size", "0", 0) < 0) {
+                vlog.info("Cannot set dpb_size to 0");
+            }*/
         } else {
             if (ffmpeg.av_opt_set(ctx->priv_data, "async_depth", "1", 0) < 0) {
                 vlog.info("Cannot set async_depth");
