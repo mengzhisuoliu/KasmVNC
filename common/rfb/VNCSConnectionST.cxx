@@ -1038,6 +1038,8 @@ void VNCSConnectionST::framebufferUpdateRequest(const Rect& r,bool incremental)
     // Non-incremental update - treat as if area requested has changed
     updates.add_changed(reqRgn);
 
+    pendingClientRefresh = true;
+
     // And send the screen layout to the client (which, unlike the
     // framebuffer dimensions, the client doesn't get during init)
     writer()->writeExtendedDesktopSize();
@@ -1571,7 +1573,10 @@ void VNCSConnectionST::writeDataUpdate()
                   server->msToNextUpdate() / 1000;
 
   if (!ui.is_empty()) {
-    encodeManager.writeUpdate(ui, server->screenLayout, server->getPixelBuffer(), cursor, maxUpdateSize);
+    encodeManager.writeUpdate(ui, server->screenLayout, server->getPixelBuffer(), cursor, pendingClientRefresh, maxUpdateSize);
+    if (pendingClientRefresh)
+        pendingClientRefresh = false;
+
     copypassed.clear();
     gettimeofday(&lastRealUpdate, nullptr);
     losslessTimer.start(losslessThreshold);

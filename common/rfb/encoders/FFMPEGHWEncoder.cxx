@@ -241,7 +241,7 @@ namespace rfb {
     }
 
     template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-    bool FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::render(const PixelBuffer *pb) {
+    bool FFMPEGHWEncoder<HWDeviceType, AVPixFmt>::render(const PixelBuffer *pb, bool forceKeyFrame) {
         // compress
         int stride;
         const auto rect = layout.dimensions;
@@ -281,6 +281,9 @@ namespace rfb {
         } else {
             frame->pict_type = AV_PICTURE_TYPE_NONE;
         }
+
+        if (forceKeyFrame)
+            frame->pict_type = AV_PICTURE_TYPE_I;
 
         const int src_stride_bytes = stride * bpp;
 

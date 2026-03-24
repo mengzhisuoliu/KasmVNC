@@ -57,7 +57,7 @@ public:
     bool isSupported() const override;
     void writeRect(const PixelBuffer *pb, const Palette &palette) override;
     void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
-    bool render(const PixelBuffer *pb) override;
+    bool render(const PixelBuffer *pb, bool forceKeyFrame = false) override;
     void writeSkipRect() override;
 };
 

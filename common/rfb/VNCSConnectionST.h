@@ -366,6 +366,7 @@ namespace rfb {
     char unixRelaySubscriptions[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN] = {};
     bool complainedAboutNoViewRights;
     std::string clientUsername;
+    bool pendingClientRefresh{false};
   };
 }
 #endif

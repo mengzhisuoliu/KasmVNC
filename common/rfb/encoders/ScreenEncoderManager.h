@@ -104,7 +104,7 @@ namespace rfb {
         // Encoder
         [[nodiscard]] bool isSupported() const override;
 
-        bool writeFrame(const PixelBuffer *pb, const Palette &palette);
+        bool writeFrame(const PixelBuffer *pb, const Palette &palette, bool forceKeyFrame = false);
         void writeRect(const PixelBuffer *pb, const Palette &palette) override {}
         void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
 

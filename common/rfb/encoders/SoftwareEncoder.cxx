@@ -55,7 +55,7 @@ namespace rfb {
         return conn->cp.supportsEncoding(encodingKasmVideo);
     }
 
-    bool SoftwareEncoder::render(const PixelBuffer *pb) {
+    bool SoftwareEncoder::render(const PixelBuffer *pb, bool forceKeyFrame) {
         // compress
         int stride;
 
@@ -92,6 +92,9 @@ namespace rfb {
         } else {
             frame->pict_type = AV_PICTURE_TYPE_NONE;
         }
+
+        if (forceKeyFrame)
+            frame->pict_type = AV_PICTURE_TYPE_I;
 
         const uint8_t *src_data[1] = {buffer};
         const int src_line_size[1] = {stride * bpp}; // RGB has bpp bytes per pixel

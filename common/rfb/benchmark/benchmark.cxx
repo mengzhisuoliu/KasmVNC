@@ -89,7 +89,7 @@ namespace benchmarking {
 
             manager.clearEncodingTime();
             if (!ui.is_empty()) {
-                manager.writeUpdate(ui, layout, pb, nullptr);
+                manager.writeUpdate(ui, layout, pb, nullptr, false);
             } else {
                 rfb::Region region{pb->getRect()};
                 manager.writeLosslessRefresh(region, layout, pb, nullptr, 2000);

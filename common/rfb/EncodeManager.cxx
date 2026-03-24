@@ -353,11 +353,11 @@ void EncodeManager::pruneLosslessRefresh(const Region& limits)
 }
 
 void EncodeManager::writeUpdate(const UpdateInfo& ui, const ScreenSet &layout, const PixelBuffer* pb,
-                                const RenderedCursor* renderedCursor,
+                                const RenderedCursor* renderedCursor, bool fullRefreshRequested,
                                 size_t maxUpdateSize)
 {
     curMaxUpdateSize = maxUpdateSize;
-    doUpdate(true, ui.changed, ui.copied, ui.copy_delta, ui.copypassed, layout, pb, renderedCursor);
+    doUpdate(true, ui.changed, ui.copied, ui.copy_delta, ui.copypassed, layout, pb, renderedCursor, fullRefreshRequested);
 }
 
 void EncodeManager::writeLosslessRefresh(const Region& req,  const ScreenSet &layout, const PixelBuffer* pb,
@@ -376,7 +376,8 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
                              const std::vector<CopyPassRect>& copypassed,
                              const ScreenSet &layout,
                              const PixelBuffer* pb,
-                             const RenderedCursor* renderedCursor) {
+                             const RenderedCursor* renderedCursor,
+                             bool fullRefreshRequested) {
     int nRects;
     Region changed, cursorRegion;
     struct timeval start;
@@ -442,7 +443,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     bool video_mode = video_mode_available && conn->cp.encoder_config.encoder != KasmVideoEncoders::Encoder::unavailable;
     if (video_mode) {
-        video_mode = updateVideo(changed, layout, pb);
+        video_mode = updateVideo(changed, layout, pb, fullRefreshRequested);
         if (!video_mode)
             conn->cp.encoder_config.encoder = KasmVideoEncoders::Encoder::unavailable;
     }
@@ -483,12 +484,10 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     conn->writer()->writeFramebufferUpdateEnd();
 }
 
-bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, const PixelBuffer *pb) {
+bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, const PixelBuffer *pb, bool fullRefreshRequested) {
     auto *screen_encoder_manager = dynamic_cast<ScreenEncoderManager<> *>(encoders[encoderKasmVideo]);
     if (!screen_encoder_manager)
         return false;
-
-    //const auto start = std::chrono::high_resolution_clock::now();
 
     if (screen_encoder_manager->get_encoder_config().encoder != conn->cp.encoder_config.encoder) {
         screen_encoder_manager->clear();
@@ -505,7 +504,7 @@ bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, 
         return false;
 
     static const Palette palette;
-    if (!screen_encoder_manager->writeFrame(pb, palette))
+    if (!screen_encoder_manager->writeFrame(pb, palette, fullRefreshRequested))
         return false;
 
     std::vector<Rect> rects;

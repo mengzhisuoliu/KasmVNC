@@ -182,7 +182,7 @@ namespace rfb {
     }
 
     template<uint8_t T>
-    bool ScreenEncoderManager<T>::writeFrame(const PixelBuffer *pb, const Palette &palette) {
+    bool ScreenEncoderManager<T>::writeFrame(const PixelBuffer *pb, const Palette &palette, bool forceKeyFrame) {
         if (screens_to_refresh.empty())
             return true;
 
@@ -219,13 +219,13 @@ namespace rfb {
         if (screens_to_refresh.size() > 1) {
             tbb::task_group_context ctx;
 
-            tbb::parallel_for_each(screens_to_refresh.begin(), screens_to_refresh.end(), [this, pb, &ctx](uint8_t index) {
+            tbb::parallel_for_each(screens_to_refresh.begin(), screens_to_refresh.end(), [this, pb, &ctx, forceKeyFrame](uint8_t index) {
                 if (ctx.is_group_execution_cancelled())
                     return;
 
                 auto &screen = screens[index];
                 if (auto *encoder = screen.encoder; encoder) {
-                    screen.dirty = encoder->render(pb);
+                    screen.dirty = encoder->render(pb, forceKeyFrame);
                     if (!screen.dirty)
                         ctx.cancel_group_execution();
                 }
@@ -242,7 +242,7 @@ namespace rfb {
             }
         } else {
             if (auto encoder = screens[head].encoder; encoder) {
-                if (encoder->render(pb))
+                if (encoder->render(pb, forceKeyFrame))
                     send_frame(screens[head]);
                 else
                     return false;
