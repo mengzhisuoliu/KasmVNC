@@ -103,7 +103,7 @@ namespace rfb {
         if constexpr (HWDeviceType == AV_HWDEVICE_TYPE_CUDA && AVPixFmt == AV_PIX_FMT_CUDA) {
             // NVENC low-latency settings
             // Rate control mode: Constant Bit Rate (CBR)
-            if (ffmpeg.av_opt_set(ctx->priv_data, "rc", "vbr_hq", 0) < 0) {
+            if (ffmpeg.av_opt_set(ctx->priv_data, "rc", "vbr", 0) < 0) {
                 vlog.info("Cannot set rc to cbr");
             }
 
