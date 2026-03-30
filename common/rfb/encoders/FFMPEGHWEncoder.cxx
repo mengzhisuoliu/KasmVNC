@@ -139,6 +139,16 @@ namespace rfb {
                 vlog.info("Cannot set delay to 0");
             }
 
+            const auto config = EncoderConfiguration::get_configuration(encoder);
+
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "qmin", config.allowed_quality.min, 0) < 0) {
+                vlog.info("Cannot set qmin");
+            }
+
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "qmax", config.allowed_quality.max, 0) < 0) {
+                vlog.info("Cannot set qmax");
+            }
+
             if (ffmpeg.av_opt_set_int(ctx->priv_data, "cq", current_params.quality, 0) < 0) {
                 vlog.info("Cannot set cq");
             }
