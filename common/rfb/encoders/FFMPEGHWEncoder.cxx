@@ -141,7 +141,7 @@ namespace rfb {
 
             const auto config = EncoderConfiguration::get_configuration(encoder);
 
-            if (ffmpeg.av_opt_set_int(ctx->priv_data, "qmin", config.allowed_quality.min, 0) < 0) {
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "qmin", current_params.quality, 0) < 0) {
                 vlog.info("Cannot set qmin");
             }
 
@@ -152,7 +152,6 @@ namespace rfb {
             if (ffmpeg.av_opt_set_int(ctx->priv_data, "cq", current_params.quality, 0) < 0) {
                 vlog.info("Cannot set cq");
             }
-
 
             /*
             // Disable temporal AQ

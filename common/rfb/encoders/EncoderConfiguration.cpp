@@ -21,7 +21,7 @@ namespace rfb {
     EncoderConfiguration::Range h264_quality_range = {0, 51};
     EncoderConfiguration::Range h264_allowed_range = {0, 50};
     EncoderConfiguration::Range av1_quality_range = {0, 63};
-    EncoderConfiguration::Range av1_allowed_range = {0, 62};
+    EncoderConfiguration::Range av1_allowed_range = {1, 62};
 
     static inline std::array<EncoderConfiguration, static_cast<size_t>(KasmVideoEncoders::Encoder::unavailable) + 1>
         EncoderConfigurations = {
