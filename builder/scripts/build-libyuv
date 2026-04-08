@@ -2,20 +2,18 @@
 
 set -euo pipefail
 
-LIBYUV_TAR_URL="https://chromium.googlesource.com/libyuv/libyuv/+archive/refs/heads/stable.tar.gz"
-LIBYUV_TAR_FILE="/tmp/libyuv.tar.gz"
+LIBYUV_REPO="https://chromium.googlesource.com/libyuv/libyuv"
 LIBYUV_SRC_DIR="/tmp/libyuv"
 
 prepare_source() {
-  cd /tmp
-
-  # Remove old files if they exist
-  [ -f "$LIBYUV_TAR_FILE" ] && rm "$LIBYUV_TAR_FILE"
   [ -d "$LIBYUV_SRC_DIR" ] && rm -rf "$LIBYUV_SRC_DIR"
 
-  mkdir -p "$LIBYUV_SRC_DIR"
-  wget "$LIBYUV_TAR_URL" -O "$LIBYUV_TAR_FILE"
-  tar -xzf "$LIBYUV_TAR_FILE" -C "$LIBYUV_SRC_DIR"
+  git clone \
+    --branch stable \
+    --depth 1 \
+    "$LIBYUV_REPO" \
+    "$LIBYUV_SRC_DIR"
+
   cd "$LIBYUV_SRC_DIR"
 }
 
