@@ -31,7 +31,7 @@ namespace rfb {
             // av1_ffmpeg_vaapi
             EncoderConfiguration{av1_quality_range, av1_allowed_range, {}, 0},
             // av1_nvenc
-            EncoderConfiguration{av1_quality_range, av1_allowed_range, {18, 23, 28, 39, 62}, 0},
+            EncoderConfiguration{av1_quality_range, {19, 62}, {19, 23, 28, 39, 62}, 0},
             // av1_software
             // profile AV_PROFILE_AV1_MAIN/FF_PROFILE_AV1_MAIN = 0
             EncoderConfiguration{av1_quality_range, av1_allowed_range, {18, 23, 28, 39, 62}, 0},
