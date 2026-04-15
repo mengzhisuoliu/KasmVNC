@@ -329,7 +329,6 @@ namespace rfb {
 
         int err{};
 
-#if defined(LIBYUV_CONVERSION)
         DEBUG_LOG(vlog, "Converting ARGB to NV12: src_stride=%d, dst_linesize[0]=%d, dst_linesize[1]=%d, dst_width=%d, dst_height=%d",
                    src_stride_bytes, frame->linesize[0], frame->linesize[1], dst_width, dst_height);
 
@@ -339,7 +338,6 @@ namespace rfb {
             return false;
         }
         DEBUG_LOG(vlog, "ARGB to NV12 conversion successful");
-#endif
 
         frame->pts = pts++;
         auto *hw_frame = hw_frame_guard.get();
