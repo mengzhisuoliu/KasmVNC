@@ -75,7 +75,7 @@ RUN \
     xorg-x11-xtrans-devel \
     xsltproc \
     libavformat-free-devel \
-    libswscale-free-devel libavfilter-free-devel \
+    libswscale-free-devel \
     libva-devel
 
 ENV SCRIPTS_DIR=/tmp/scripts
