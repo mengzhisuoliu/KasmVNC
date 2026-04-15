@@ -159,6 +159,10 @@ else ()
     message(FATAL_ERROR "libyuv was not found")
 endif ()
 
+if (ENABLE_DEBUG_ENCODERS)
+    set(RFB_DEFINITIONS ${RFB_DEFINITIONS} DEBUG_ENCODERS)
+endif ()
+
 add_library(rfb STATIC ${RFB_SOURCES})
 
 target_include_directories(rfb PRIVATE

@@ -218,6 +218,7 @@ endif()
 set(HAVE_PAM ${ENABLE_PAM})
 
 option(DEBUG_FFMPEG "Debug ffmpeg" OFF)
+option(ENABLE_DEBUG_ENCODERS "Extended Debug output for encoders" ON)
 option(ENABLE_XDAMAGE "Enable XDamage" OFF)
 
 # Check for SSE2

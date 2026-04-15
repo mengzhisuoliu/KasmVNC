@@ -4,11 +4,9 @@
 
 namespace rfb::encoders {
 
-#define DEBUG_ENCODERS 1
-
-#if DEBUG_ENCODERS
+#if defined(DEBUG_ENCODERS)
 #define DEBUG_LOG(log, ...) \
-    log.debug(__VA_ARGS__)
+    do { (log).debug(__VA_ARGS__); } while(0)
 #else
 #define DEBUG_LOG(log, ...)
 #endif
