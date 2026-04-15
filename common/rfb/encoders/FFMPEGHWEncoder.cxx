@@ -258,14 +258,6 @@ namespace rfb {
             return false;
         }
         DEBUG_LOG(vlog, "Codec opened successfully");
-#if defined(FFMPEG_FILTER)
-        const char* filters = "format=nv12,hwupload";  // Or "scale_vaapi=format=nv12" for explicit VAAPI scaler
-        ffmpeg.avfilter_graph_parse_ptr(filter_graph, filters, &inputs, &outputs, nullptr);
-        ffmpeg.av_buffersrc_add_frame_flags(buffersrc_ctx, rgb_frame, AV_BUFFERSRC_FLAG_PUSH);
-        AVFrame* hw_frame = av_frame_alloc();
-        ffmpeg.av_buffersink_get_frame_flags(buffersink_ctx, hw_frame, AV_BUFFERSINK_FLAG_NO_REQUEST);
-        // ffmpeg.avcodec_send_frame(enc_ctx, hw_frame);
-#endif
 
         return true;
     }
