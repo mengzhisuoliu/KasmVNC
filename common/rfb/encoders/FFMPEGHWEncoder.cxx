@@ -27,9 +27,7 @@
 #include "KasmVideoConstants.h"
 #include "rfb/encodings.h"
 #include <rfb/encoders/utils.h>
-#if defined LIBYUV_CONVERSION
 #include <libyuv.h>
-#endif
 
 static rfb::LogWriter vlog("FFMPEGHWEncoder");
 
