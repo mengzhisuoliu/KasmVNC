@@ -16,14 +16,14 @@
  * USA.
  */
 #pragma once
-#include <tbb/spin_mutex.h>
+#include <tbb/task_arena.h>
 #include <vector>
 #include "KasmVideoConstants.h"
 #include "VideoEncoder.h"
 #include "rfb/Encoder.h"
 #include "rfb/ffmpeg.h"
 
-inline constexpr uint8_t MAX_SCREENS = 8;
+inline constexpr uint8_t MAX_SCREENS = 4;
 
 namespace rfb {
     template<uint8_t T = MAX_SCREENS>
@@ -41,9 +41,9 @@ namespace rfb {
 
         uint64_t mask{};
         std::vector<uint8_t> screens_to_refresh;
-        tbb::spin_mutex conn_mutex;
 
         std::array<screen_t, T> screens{};
+        tbb::task_arena arena;
         const FFmpeg &ffmpeg;
         VideoEncoderParams current_params;
 

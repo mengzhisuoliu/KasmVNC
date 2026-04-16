@@ -38,6 +38,7 @@ namespace rfb {
         base_video_encoder(encoder),
         available_encoders(encoders) {
         screens_to_refresh.reserve(T);
+        arena.initialize(MAX_SCREENS);
     }
 
     template<uint8_t T>
@@ -219,16 +220,20 @@ namespace rfb {
         if (screens_to_refresh.size() > 1) {
             tbb::task_group_context ctx;
 
-            tbb::parallel_for_each(screens_to_refresh.begin(), screens_to_refresh.end(), [this, pb, &ctx, forceKeyFrame](uint8_t index) {
-                if (ctx.is_group_execution_cancelled())
-                    return;
+            arena.execute([&] {
+                tbb::parallel_for_each(screens_to_refresh.begin(),
+                    screens_to_refresh.end(),
+                    [this, pb, &ctx, forceKeyFrame](uint8_t index) {
+                        if (ctx.is_group_execution_cancelled())
+                            return;
 
-                auto &screen = screens[index];
-                if (auto *encoder = screen.encoder; encoder) {
-                    screen.dirty = encoder->render(pb, forceKeyFrame);
-                    if (!screen.dirty)
-                        ctx.cancel_group_execution();
-                }
+                        auto &screen = screens[index];
+                        if (auto *encoder = screen.encoder; encoder) {
+                            screen.dirty = encoder->render(pb, forceKeyFrame);
+                            if (!screen.dirty)
+                                ctx.cancel_group_execution();
+                        }
+                    });
             });
 
             if (ctx.is_group_execution_cancelled())
