@@ -24,6 +24,7 @@
 #include <rfb/ffmpeg.h>
 #include <fmt/format.h>
 #include <rfb/encoders/utils.h>
+#include <libyuv.h>
 #include "EncoderConfiguration.h"
 
 static rfb::LogWriter vlog("SoftwareEncoder");
@@ -96,18 +97,25 @@ namespace rfb {
         if (forceKeyFrame)
             frame->pict_type = AV_PICTURE_TYPE_I;
 
-        const uint8_t *src_data[1] = {buffer};
-        const int src_line_size[1] = {stride * bpp}; // RGB has bpp bytes per pixel
-
-        if (ffmpeg.sws_scale(sws_guard.get(), src_data, src_line_size, 0, height, frame->data, frame->linesize) < 0) {
-            vlog.error("Error while scaling image");
+        const int src_stride_bytes = stride * bpp;
+        int err = libyuv::ARGBToI420(buffer,
+            src_stride_bytes,
+            frame->data[0],
+            frame->linesize[0],
+            frame->data[1],
+            frame->linesize[1],
+            frame->data[2],
+            frame->linesize[2],
+            dst_width,
+            dst_height);
+        if (err != 0) {
+            vlog.error("libyuv::ARGBToI420 failed with code: %d", err);
             return false;
         }
 
         frame->pts = pts++;
 
-        int err = ffmpeg.avcodec_send_frame(ctx_guard.get(), frame);
-        if (err < 0) {
+        if (ffmpeg.avcodec_send_frame(ctx_guard.get(), frame) < 0) {
             vlog.error("Error sending frame to codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
@@ -231,23 +239,6 @@ namespace rfb {
         // H.264 profile for better compression
         // if (ffmpeg.av_opt_set(ctx->priv_data, "profile", "high", 0) != 0)
         //     throw std::runtime_error("Could not set codec setting");
-
-        auto *sws_ctx = ffmpeg.sws_getContext(width,
-                                              height,
-                                              AV_PIX_FMT_RGB32,
-                                              current_params.width,
-                                              current_params.height,
-                                              ctx_guard->pix_fmt,
-                                              SWS_BILINEAR,
-                                              nullptr,
-                                              nullptr,
-                                              nullptr);
-        if (!sws_ctx) {
-            vlog.error("Could not initialize the conversion context");
-            return false;
-        }
-
-        sws_guard.reset(sws_ctx);
 
         auto *frame = frame_guard.get();
 

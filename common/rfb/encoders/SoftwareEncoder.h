@@ -32,7 +32,6 @@ namespace rfb {
         FFmpeg::FrameGuard frame_guard;
         FFmpeg::PacketGuard pkt_guard;
         FFmpeg::ContextGuard ctx_guard;
-        FFmpeg::SwsContextGuard sws_guard;
 
         KasmVideoEncoders::Encoder encoder;
         VideoEncoderParams current_params{};

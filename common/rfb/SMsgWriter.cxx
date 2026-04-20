@@ -783,7 +783,7 @@ void SMsgWriter::writeVideoEncoders(const std::vector<int32_t> &encoders) {
     const uint8_t size = conjunction.size();
     os->writeU8(size);
 
-    for (auto encoder: conjunction) {
+    for (const auto encoder: conjunction) {
         os->writeS32(encoder);
 
         const auto &config = EncoderConfiguration::get_configuration(KasmVideoEncoders::from_encoding(encoder));
