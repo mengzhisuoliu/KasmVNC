@@ -28,6 +28,8 @@
 
 namespace rfb {
     static LogWriter vlog("ScreenEncoderManager");
+    // We assume the primary screen is always 0
+    static constexpr uint8_t PRIMARY_SCREEN_INDEX = 0;
 
     template<uint8_t T>
     ScreenEncoderManager<T>::ScreenEncoderManager(const FFmpeg &ffmpeg_, const KasmVideoEncoders::EncoderConfig &encoder,
@@ -43,7 +45,7 @@ namespace rfb {
 
     template<uint8_t T>
     ScreenEncoderManager<T>::~ScreenEncoderManager() {
-        clear_screens();
+        clear_screens(mask);
     }
 
     template<uint8_t T>
@@ -52,7 +54,7 @@ namespace rfb {
         base_video_encoder = KasmVideoEncoders::EncoderConfig{KasmVideoEncoders::Encoder::unavailable};
         available_encoders.clear();
         screens_to_refresh.clear();
-        clear_screens();
+        clear_screens(mask);
     }
 
     template<uint8_t T>
@@ -86,14 +88,17 @@ namespace rfb {
 
     template<uint8_t T>
     bool ScreenEncoderManager<T>::add_screen(uint8_t index, const Screen &layout) {
-        auto *encoder = add_encoder(layout);
-        if (!encoder)
+        screens[index] = {layout, nullptr, true};
+        screens[index].layout.id = index;
+        screens[index].encoder = add_encoder(screens[index].layout);
+
+        if (!screens[index].encoder) {
+            screens[index] = {};
             return false;
+        }
 
         mask |= 1 << index;
 
-        screens[index] = {layout, encoder, true};
-        head = std::min(head, index);
         ++count;
 
         return true;
@@ -131,8 +136,8 @@ namespace rfb {
     }
 
     template<uint8_t T>
-    void ScreenEncoderManager<T>::clear_screens() {
-        uint64_t remaining_mask = mask;
+    void ScreenEncoderManager<T>::clear_screens(uint64_t clear_mask) {
+        uint64_t remaining_mask = clear_mask;
         while (remaining_mask) {
             const auto pos = __builtin_ctzll(remaining_mask);
             remove_screen(pos);
@@ -155,7 +160,7 @@ namespace rfb {
             const auto &screen = layout.screens[i];
             auto id = screen.id;
             if (id >= T) {
-                vlog.error("Wrong id");
+                vlog.debug("Wrong layout id");
                 id = 0;
             }
 
@@ -168,6 +173,10 @@ namespace rfb {
             }
         }
 
+        if (const auto stale_screens = old_mask & ~mask; stale_screens) {
+            clear_screens(stale_screens);
+        }
+
         if (old_mask != mask || (mask > 0 && screens_to_refresh.empty()))
             rebuild_screens_to_refresh();
 
@@ -176,7 +185,7 @@ namespace rfb {
 
     template<uint8_t T>
     bool ScreenEncoderManager<T>::isSupported() const {
-        if (const auto *encoder = screens[head].encoder; encoder)
+        if (const auto *encoder = screens[PRIMARY_SCREEN_INDEX].encoder; encoder)
             return encoder->isSupported();
 
         return false;
@@ -246,9 +255,9 @@ namespace rfb {
                 }
             }
         } else {
-            if (auto encoder = screens[head].encoder; encoder) {
+            if (auto encoder = screens[PRIMARY_SCREEN_INDEX].encoder; encoder) {
                 if (encoder->render(pb, forceKeyFrame))
-                    send_frame(screens[head]);
+                    send_frame(screens[PRIMARY_SCREEN_INDEX]);
                 else
                     return false;
             }

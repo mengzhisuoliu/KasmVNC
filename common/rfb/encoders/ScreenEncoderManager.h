@@ -36,7 +36,6 @@ namespace rfb {
             bool dirty{};
         };
 
-        uint8_t head{};
         uint8_t count{};
 
         uint64_t mask{};
@@ -55,7 +54,7 @@ namespace rfb {
         [[nodiscard]] size_t get_screen_count() const;
         void remove_screen(uint8_t index);
         void rebuild_screens_to_refresh();
-        void clear_screens();
+        void clear_screens(uint64_t clear_mask);
 
     public:
         struct stats_t {
