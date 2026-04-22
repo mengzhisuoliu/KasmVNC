@@ -171,6 +171,7 @@ namespace rfb {
         }
 
         static unsigned int to_msg_id(Encoder encoder) {
+            static_assert(11 == static_cast<size_t>(Encoder::unavailable), "The switch case needs to be exte");
             switch (encoder) {
                 case Encoder::av1_vaapi:
                 case Encoder::av1_ffmpeg_vaapi:
