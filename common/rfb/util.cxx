@@ -556,8 +556,7 @@ namespace rfb {
       unsigned diff = (second->tv_sec - first->tv_sec) * 1000;
 
       if constexpr (std::is_same_v<T, timeval>) {
-          diff += second->tv_usec / 1000;
-          diff -= first->tv_usec / 1000;
+          diff += (second->tv_usec - first->tv_usec) / 1000;
       } else {
           diff += (second->tv_nsec - first->tv_nsec) / 1000000;
       }
