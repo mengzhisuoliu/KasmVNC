@@ -66,7 +66,7 @@ namespace rfb::video_encoders {
 
             debug_encoders("CLI-specified video codecs", encoders);
 
-            static std::array<EncoderCandidate, 7> candidates = {
+            static std::array<EncoderCandidate, 8> candidates = {
                 {
                     EncoderCandidate{KasmVideoEncoders::Encoder::h264_nvenc, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_CUDA},
                     EncoderCandidate{KasmVideoEncoders::Encoder::h265_nvenc, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_CUDA},
@@ -75,6 +75,7 @@ namespace rfb::video_encoders {
                     EncoderCandidate{KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_VAAPI},
                     EncoderCandidate{KasmVideoEncoders::Encoder::av1_ffmpeg_vaapi, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_VAAPI},
                     EncoderCandidate{KasmVideoEncoders::Encoder::h264_software, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_NONE},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_software, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_NONE}
                     // EncoderCandidate{KasmVideoEncoders::Encoder::av1_software, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_NONE},
                 }
             };
@@ -242,6 +243,7 @@ namespace rfb::video_encoders {
         }
 
         result.push_back({KasmVideoEncoders::Encoder::h264_software});
+        result.push_back({KasmVideoEncoders::Encoder::h265_software});
         // result.push_back(KasmVideoEncoders::Encoder::av1_software);
 
         return result;

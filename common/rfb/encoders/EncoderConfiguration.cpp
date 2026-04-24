@@ -38,11 +38,13 @@ namespace rfb {
 
             // H.265
             // h265_vaapi
-            // profile AV_PROFILE_HEVC_MAIN/FF_PROFILE_HEVC_MAIN = 1
             EncoderConfiguration{h264_quality_range, h264_quality_range, {18, 23, 28, 39, 51}},
             // h265_ffmpeg_vaapi
             EncoderConfiguration{h264_quality_range, h264_allowed_range, {18, 23, 28, 39, 50}, 1},
             // h265_nvenc
+            EncoderConfiguration{h264_quality_range, h264_allowed_range, {18, 23, 28, 39, 50}, 1},
+            // h265_software
+            // profile AV_PROFILE_HEVC_MAIN/FF_PROFILE_HEVC_MAIN = 1
             EncoderConfiguration{h264_quality_range, h264_allowed_range, {18, 23, 28, 39, 50}, 1},
 
             // H.264

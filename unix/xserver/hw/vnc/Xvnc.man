@@ -615,8 +615,12 @@ Specifies the video codec to use for video streaming mode. Valid options are:
 (H.264/AVC software encoding),
 .B avc_vaapi
 (H.264/AVC with VA-API hardware acceleration),
+.B h265
+(H.265/HEVC software encoding),
 .B h265_vaapi
 (H.265/HEVC with VA-API hardware acceleration),
+.B hevc
+(H.265/HEVC software encoding),
 .B hevc_vaapi
 (H.265/HEVC with VA-API hardware acceleration),
 .B av1

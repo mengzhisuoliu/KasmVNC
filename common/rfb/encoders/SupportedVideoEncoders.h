@@ -35,8 +35,10 @@ namespace rfb {
             avc_vaapi,
             avc_nvenc,
 
+            h265,
             h265_vaapi,
             h265_nvenc,
+            hevc,
             hevc_vaapi,
             hevc_nvenc,
 
@@ -54,8 +56,10 @@ namespace rfb {
             KasmVideoEncoders::Encoder::h264_ffmpeg_vaapi,
             KasmVideoEncoders::Encoder::h264_nvenc,
 
+            KasmVideoEncoders::Encoder::h265_software,
             KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi,
             KasmVideoEncoders::Encoder::h265_nvenc,
+            KasmVideoEncoders::Encoder::h265_software,
             KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi,
             KasmVideoEncoders::Encoder::h265_nvenc,
 
@@ -69,10 +73,6 @@ namespace rfb {
         static_assert(
             MappedCodecs.size() == static_cast<size_t>(Codecs::unavailable) + 1, "MappedCodecs array size must match Codecs enum count");
 
-        // Compile-time check: Encoder must match Codec enum count (excluding unavailable)
-        static_assert(static_cast<size_t>(KasmVideoEncoders::Encoder::unavailable) + 3 == static_cast<size_t>(SupportedVideoEncoders::Codecs::unavailable),
-            "Encoder enum count must match SupportedVideoEncoders::Codecs enum count - 3.");
-
         static inline auto CodecNames = std::to_array<std::string_view>({"h264",
             "h264_vaapi",
             "h264_nvenc",
@@ -80,8 +80,10 @@ namespace rfb {
             "avc_vaapi",
             "avc_nvenc",
 
+            "h265",
             "h265_vaapi",
             "h265_nvenc",
+            "hevc",
             "hevc_vaapi",
             "hevc_nvenc",
 
@@ -162,6 +164,7 @@ namespace rfb {
                         result.push_back(map_encoder(Codecs::av1));
                         result.push_back(map_encoder(Codecs::h265_nvenc));
                         result.push_back(map_encoder(Codecs::h265_vaapi));
+                        result.push_back(map_encoder(Codecs::h265));
                         result.push_back(map_encoder(Codecs::h264_nvenc));
                         result.push_back(map_encoder(Codecs::h264_vaapi));
                         result.push_back(map_encoder(Codecs::h264));

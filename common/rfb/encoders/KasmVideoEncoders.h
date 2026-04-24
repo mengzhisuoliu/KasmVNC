@@ -87,6 +87,7 @@ namespace rfb {
             h265_vaapi, // h265
             h265_ffmpeg_vaapi,
             h265_nvenc,
+            h265_software,
 
             h264_vaapi,
             h264_ffmpeg_vaapi,
@@ -111,7 +112,8 @@ namespace rfb {
 
             "hevc_vaapi",
             "hevc_vaapi",
-            "hevc_nvenc", // "libx265"
+            "hevc_nvenc",
+            "libx265",
 
             "h264_vaapi",
             "h264_vaapi",
@@ -129,6 +131,7 @@ namespace rfb {
             pseudoEncodingStreamingModeHEVCVAAPI,
             pseudoEncodingStreamingModeHEVCVAAPI,
             pseudoEncodingStreamingModeHEVCNVENC,
+            pseudoEncodingStreamingModeHEVCSW,
 
             pseudoEncodingStreamingModeAVCVAAPI,
             pseudoEncodingStreamingModeAVCVAAPI,
@@ -140,7 +143,7 @@ namespace rfb {
         static_assert(Encodings.size() == static_cast<size_t>(Encoder::unavailable) + 1, "Encodings array size must match Encoder enum count. ");
 
         static bool is_accelerated(Encoder encoder) {
-            return encoder != Encoder::h264_software && encoder != Encoder::av1_software;
+            return encoder != Encoder::h264_software && encoder != Encoder::h265_software && encoder != Encoder::av1_software;
         }
 
         static auto to_string(Encoder encoder) {
@@ -181,6 +184,7 @@ namespace rfb {
                 case Encoder::h265_vaapi: // h265
                 case Encoder::h265_ffmpeg_vaapi:
                 case Encoder::h265_nvenc:
+                case Encoder::h265_software:
                     return kasmVideoH265;
                 case Encoder::h264_vaapi:
                 case Encoder::h264_ffmpeg_vaapi:
@@ -202,6 +206,7 @@ namespace rfb {
                 case Encoder::h265_vaapi: // h265
                 case Encoder::h265_ffmpeg_vaapi:
                 case Encoder::h265_nvenc:
+                case Encoder::h265_software:
                     return pseudoEncodingStreamingModeHEVC;
                 case Encoder::h264_vaapi:
                 case Encoder::h264_ffmpeg_vaapi:
