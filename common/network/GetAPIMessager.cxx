@@ -208,8 +208,10 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
     if (!screenW || !screenH)
         vlog.error("Screenshot requested but no screenshot exists (screen hasn't been viewed)");
 
-    if (!w || !h || q > 9 || !staging)
+    if (!w || !h || q > 9 || !staging) {
+        pthread_mutex_unlock(&screenMutex);
         return nullptr;
+    }
 
     if (w == cachedW && h == cachedH && q == cachedQ) {
 		if (dedup) {
@@ -229,14 +231,14 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 		// Encode the new JPEG, cache it
 		JpegCompressor jc;
 
-	    int quality = conf[q].quality;
-		int subsampling = conf[q].subsampling;
+	    const int quality = conf[q].quality;
+		const int subsampling = conf[q].subsampling;
 
 		jc.clear();
 
 		if (w != screenW || h != screenH) {
-			float xdiff = w / (float) screenW;
-			float ydiff = h / (float) screenH;
+			const float xdiff = w / (float) screenW;
+			const float ydiff = h / (float) screenH;
 			const float diff = xdiff < ydiff ? xdiff : ydiff;
 
 			const uint16_t neww = screenW * diff;
