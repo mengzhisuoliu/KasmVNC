@@ -28,8 +28,9 @@ inline constexpr uint8_t MAX_SCREENS = 8;
 namespace rfb {
     template<uint8_t T = MAX_SCREENS>
     class ScreenEncoderManager final : public Encoder {
+        using mask_t = uint64_t;
         static_assert(
-            T <= std::numeric_limits<uint64_t>::digits, "ScreenEncoderManager mask should be changed as current mask supports T <= 64");
+            T <= std::numeric_limits<mask_t>::digits, "ScreenEncoderManager mask should be changed as current mask supports T <= 64");
         struct screen_t {
             Screen layout{};
             VideoEncoder *encoder{};
@@ -37,8 +38,7 @@ namespace rfb {
         };
 
         uint8_t count{};
-
-        uint64_t mask{};
+        mask_t mask{};
         std::vector<uint8_t> screens_to_refresh;
 
         std::array<screen_t, T> screens{};
@@ -54,7 +54,7 @@ namespace rfb {
         [[nodiscard]] size_t get_screen_count() const;
         void remove_screen(uint8_t index);
         void rebuild_screens_to_refresh();
-        void clear_screens(uint64_t clear_mask);
+        void clear_screens(mask_t clear_mask);
 
     public:
         struct stats_t {

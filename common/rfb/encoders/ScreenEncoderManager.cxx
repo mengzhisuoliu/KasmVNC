@@ -125,7 +125,7 @@ namespace rfb {
     void ScreenEncoderManager<T>::rebuild_screens_to_refresh() {
         screens_to_refresh.clear();
 
-        uint64_t remaining_mask = mask;
+        mask_t remaining_mask = mask;
         while (remaining_mask) {
             const auto pos = __builtin_ctzll(remaining_mask);
             if (screens[pos].dirty)
@@ -136,8 +136,8 @@ namespace rfb {
     }
 
     template<uint8_t T>
-    void ScreenEncoderManager<T>::clear_screens(uint64_t clear_mask) {
-        uint64_t remaining_mask = clear_mask;
+    void ScreenEncoderManager<T>::clear_screens(mask_t clear_mask) {
+        mask_t remaining_mask = clear_mask;
         while (remaining_mask) {
             const auto pos = __builtin_ctzll(remaining_mask);
             remove_screen(pos);
@@ -155,6 +155,7 @@ namespace rfb {
         const auto bounds = region.get_bounding_rect();
 
         const auto old_mask = mask;
+        mask_t new_mask = 0;
 
         for (uint8_t i = 0; i < static_cast<uint8_t>(layout.num_screens()); ++i) {
             const auto &screen = layout.screens[i];
@@ -163,6 +164,8 @@ namespace rfb {
                 vlog.debug("Wrong layout id");
                 id = 0;
             }
+
+            new_mask |= 1ULL << id;
 
             if (!screens[id].layout.dimensions.equals(screen.dimensions)) {
                 remove_screen(id);
@@ -173,7 +176,7 @@ namespace rfb {
             }
         }
 
-        if (const auto stale_screens = old_mask & ~mask; stale_screens) {
+        if (const auto stale_screens = old_mask & ~new_mask; stale_screens) {
             clear_screens(stale_screens);
         }
 
