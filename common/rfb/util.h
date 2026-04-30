@@ -190,60 +190,88 @@ namespace rfb {
 #define __rfbmin(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define STOPWATCH_END_US(name, result)              \
+#define STOPWATCH_END_US(name, result)                      \
     const auto result = usSince(&name)
 
-#define STOPWATCH_END_MS(name, result)              \
+#define STOPWATCH_END_MS(name, result)                      \
     const auto result = msSince(&name)
 
-#define STOPWATCH_PRINT_US(log, name)               \
-    STOPWATCH_END_US(name, name##_end);             \
-    log.debug("Time "#name": %lu us", name##_end)
+#define STOPWATCH_PRINT_US(log, name)                       \
+    do {                                                    \
+        STOPWATCH_END_US(name, name##_end);                 \
+        log.debug("Time " #name ": %lu us", name##_end);    \
+    } while (0)
 
-#define STOPWATCH_PRINT_MS(log, name)               \
-    STOPWATCH_END_MS(name, name##_end);             \
-    log.debug("Time "#name": %u ms", name##_end)
+#define STOPWATCH_PRINT_MS(log, name)                       \
+    do {                                                    \
+        STOPWATCH_END_MS(name, name##_end);                 \
+        log.debug("Time " #name ": %u ms", name##_end);     \
+    } while (0);
 
-#define COARSE_STOPWATCH(name)                      \
-    timespec name{};                                \
+#define STOPWATCH_PRINT_MSG_US(log, name, msg)              \
+    do {                                                    \
+        STOPWATCH_END_US(name, name##_end);                 \
+        log.debug("%s: %u us", msg, name##_end);            \
+    } while (0)
+
+#define STOPWATCH_PRINT_MSG_MS(log, name, msg)              \
+    do {                                                    \
+        STOPWATCH_END_MS(name, name##_end);                 \
+        log.debug("%s: %u ms", msg, name##_end);            \
+    } while (0)
+
+#define COARSE_STOPWATCH(name)                              \
+    timespec name{};                                        \
     clock_gettime(CLOCK_MONOTONIC_COARSE, &name)
 
-#define COARSE_STOPWATCH_PRINT_MS(log, name)        STOPWATCH_PRINT_MS(log, name)
+#define COARSE_STOPWATCH_PRINT_MS(log, name)                STOPWATCH_PRINT_MS(log, name)
 
-#define MONOTONIC_STOPWATCH(name)                   \
-    timespec name{};                                \
+#define MONOTONIC_STOPWATCH(name)                           \
+    timespec name{};                                        \
     clock_gettime(CLOCK_MONOTONIC, &name)
 
-#define MONOTONIC_STOPWATCH_PRINT_US(log, name)     STOPWATCH_PRINT_US(log, name)
+#define MONOTONIC_STOPWATCH_PRINT_US(log, name)             STOPWATCH_PRINT_US(log, name)
 
-#define MONOTONIC_STOPWATCH_PRINT_MS(log, name)     STOPWATCH_PRINT_MS(log, name)
+#define MONOTONIC_STOPWATCH_PRINT_MS(log, name)             STOPWATCH_PRINT_MS(log, name)
 
-#define TIMEOFDAY_STOPWATCH(name)                   \
-    timeval name{};                                 \
+#define MONOTONIC_STOPWATCH_PRINT_MSG_US(log, name, msg)    STOPWATCH_PRINT_MSG_US(log, name, msg)
+
+#define MONOTONIC_STOPWATCH_PRINT_MSG_MS(log, name, msg)    STOPWATCH_PRINT_MSG_MS(log, name, msg)
+
+#define TIMEOFDAY_STOPWATCH(name)                           \
+    timeval name{};                                         \
     gettimeofday(&name, nullptr)
 
-#define TIMEOFDAY_STOPWATCH_PRINT_MS(log, name)       STOPWATCH_PRINT_MS(log, name)
+#define TIMEOFDAY_STOPWATCH_PRINT_MS(log, name)             STOPWATCH_PRINT_MS(log, name)
 
-#define TRACE_STOPWATCH(name)                       COARSE_STOPWATCH(name)
+#define TRACE_STOPWATCH(name)                               COARSE_STOPWATCH(name)
 
-#define TRACE_STOPWATCH_PRINT_MS(log, name)         COARSE_STOPWATCH_PRINT_MS(log, name)
+#define TRACE_STOPWATCH_PRINT_MS(log, name)                 COARSE_STOPWATCH_PRINT_MS(log, name)
 
-#define TRACE_STOPWATCH_END_MS(name, result)        STOPWATCH_END_MS(name, result)
+#define TRACE_STOPWATCH_END_MS(name, result)                STOPWATCH_END_MS(name, result)
 
 #ifndef NDEBUG
-#define DEBUG_STOPWATCH(name)                       MONOTONIC_STOPWATCH(name)
+#define DEBUG_STOPWATCH(name)                               MONOTONIC_STOPWATCH(name)
 #else
 #define DEBUG_STOPWATCH(name)
 #endif
 
 #ifndef NDEBUG
-#define DEBUG_STOPWATCH_PRINT_US(log, name)            MONOTONIC_STOPWATCH_PRINT_US(log, name)
+#define DEBUG_STOPWATCH_PRINT_US(log, name)                 MONOTONIC_STOPWATCH_PRINT_US(log, name)
 
-#define DEBUG_STOPWATCH_PRINT_MS(log, name)            MONOTONIC_STOPWATCH_PRINT_MS(log, name)
+#define DEBUG_STOPWATCH_PRINT_MS(log, name)                 MONOTONIC_STOPWATCH_PRINT_MS(log, name)
+
+#define DEBUG_STOPWATCH_PRINT_MSG_US(log, name, msg)        MONOTONIC_STOPWATCH_PRINT_MSG_US(log, name, msg)
+
+#define DEBUG_STOPWATCH_PRINT_MSG_MS(log, name, msg)        MONOTONIC_STOPWATCH_PRINT_MSG_MS(log, name, msg)
 #else
 #define DEBUG_STOPWATCH_PRINT_US(log, name)
 
 #define DEBUG_STOPWATCH_PRINT_MS(log, name)
+
+#define DEBUG_STOPWATCH_PRINT_MSG_US(log, name, msg)
+
+#define DEBUG_STOPWATCH_PRINT_MSG_MS(log, name, msg)
 #endif
 
 #endif

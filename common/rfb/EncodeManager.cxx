@@ -480,7 +480,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     updateQualities();
 
-    printf("TOTAL FRAME TOOK: %d\n", msSince(&start));
+    DEBUG_STOPWATCH_PRINT_MSG_MS(vlog, start, "FRAME TOTAL TIME");
     conn->writer()->writeFramebufferUpdateEnd();
 }
 
