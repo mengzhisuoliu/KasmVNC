@@ -60,7 +60,11 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 					ownerConnected(0), activeUsers(0),
 					sessionsInfo( "{\"users\":[]}"){
 
-	pthread_mutex_init(&screenMutex, NULL);
+	pthread_mutexattr_t screenAttr;
+	pthread_mutexattr_init(&screenAttr);
+	pthread_mutexattr_settype(&screenAttr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&screenMutex, &screenAttr);
+	pthread_mutexattr_destroy(&screenAttr);
 	pthread_mutex_init(&userMutex, NULL);
 	pthread_mutex_init(&statMutex, NULL);
 	pthread_mutex_init(&frameStatMutex, NULL);
@@ -71,11 +75,19 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 
 // from main thread
 void GetAPIMessager::mainUpdateScreen(rfb::PixelBuffer *pb_) {
-	if (pthread_mutex_trylock(&screenMutex))
-		return;
-
     pb = pb_;
+}
 
+void GetAPIMessager::lockScreenshots() {
+	pthread_mutex_lock(&screenMutex);
+
+	screenW = screenH = 0;
+	screenHash = 0;
+	cachedW = cachedH = cachedQ = 0;
+	cachedJpeg.clear();
+}
+
+void GetAPIMessager::unlockScreenshots() {
 	pthread_mutex_unlock(&screenMutex);
 }
 
@@ -101,7 +113,7 @@ void GetAPIMessager::mainUpdateServerFrameStats(uint8_t changedPerc,
 	uint32_t all, uint32_t jpeg, uint32_t webp, uint32_t analysis,
 	uint32_t jpegarea, uint32_t webparea,
 	uint16_t njpeg, uint16_t nwebp,
-	uint16_t enc, uint16_t scale, uint16_t shot,
+	uint16_t enc, uint16_t scale,
 	uint16_t w, uint16_t h) {
 
 	if (pthread_mutex_lock(&frameStatMutex))
@@ -118,7 +130,6 @@ void GetAPIMessager::mainUpdateServerFrameStats(uint8_t changedPerc,
 	serverFrameStats.nwebp = nwebp;
 	serverFrameStats.enc = enc;
 	serverFrameStats.scale = scale;
-	serverFrameStats.shot = shot;
 	serverFrameStats.w = w;
 	serverFrameStats.h = h;
 
@@ -164,17 +175,20 @@ void GetAPIMessager::mainUpdateSessionsInfo(std::string newSessionsInfo)
 uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	const uint8_t q, const bool dedup,
 	uint32_t &len, uint8_t *staging) {
-
+    unsigned shottime = 0;
     int stride;
-
-    if (!pb)
-        return nullptr;
+    TRACE_STOPWATCH(shotstart);
 
     uint8_t *ret = nullptr;
     len = 0;
 
     if (pthread_mutex_lock(&screenMutex))
         return nullptr;
+
+    if (!pb) {
+        pthread_mutex_unlock(&screenMutex);
+        return nullptr;
+    }
 
     const rdr::U8 *buf = pb->getBuffer(pb->getRect(), &stride);
 
@@ -278,6 +292,12 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	}
 
 	pthread_mutex_unlock(&screenMutex);
+
+    shottime = msSince(&shotstart);
+    if (!pthread_mutex_lock(&frameStatMutex)) {
+        serverFrameStats.shot = shottime;
+        pthread_mutex_unlock(&frameStatMutex);
+    }
 
 	return ret;
 }

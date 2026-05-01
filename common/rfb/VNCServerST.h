@@ -205,6 +205,8 @@ namespace rfb {
 
     enum UserActionType {Join, Leave};
     void notifyUserAction(const VNCSConnectionST* newConnection, std::string& user_name, const UserActionType action_type);
+    void lockScreenBuffer() const;
+    void unlockScreenBuffer() const;
 
   protected:
 

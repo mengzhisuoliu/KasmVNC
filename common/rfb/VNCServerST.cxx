@@ -507,6 +507,10 @@ void VNCServerST::setPixelBuffer(PixelBuffer* pb_, const ScreenSet& layout)
   renderedCursorInvalid = true;
   add_changed(pb->getRect());
 
+  if (apimessager) {
+      apimessager->mainUpdateScreen(pb);
+  }
+
   // Make sure that we have at least one screen
   if (screenLayout.num_screens() == 0)
     screenLayout.add_screen(Screen(0, 0, 0, pb->width(), pb->height(), 0));
@@ -1104,12 +1108,7 @@ void VNCServerST::writeUpdate()
   }
 
   DEBUG_STOPWATCH_PRINT_US(slog, perm_check);
-  unsigned shottime = 0;
   if (apimessager) {
-    TRACE_STOPWATCH(shotstart);
-    apimessager->mainUpdateScreen(pb);
-    shottime = msSince(&shotstart);
-
     trackingFrameStats = 0;
     checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
@@ -1178,7 +1177,7 @@ void VNCServerST::writeUpdate()
                                                 analysisMs,
                                                 jpegstats.area, webpstats.area,
                                                 jpegstats.rects, webpstats.rects,
-                                                enctime, scaletime, shottime,
+                                                enctime, scaletime,
                                                 pb->getRect().width(),
                                                 pb->getRect().height());
     } else {
@@ -1371,4 +1370,16 @@ void VNCServerST::notifyUserAction(const VNCSConnectionST* newConnection, std::s
   }
   logNotification.append( std::to_string(notificationsSent) + " clients");
   slog.info("%s", logNotification.c_str());
+}
+
+void VNCServerST::lockScreenBuffer() const {
+    if (apimessager) {
+        apimessager->lockScreenshots();
+    }
+}
+
+void VNCServerST::unlockScreenBuffer() const {
+    if (apimessager) {
+        apimessager->unlockScreenshots();
+    }
 }
