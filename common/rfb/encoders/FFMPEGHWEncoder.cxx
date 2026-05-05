@@ -356,10 +356,16 @@ namespace rfb {
         auto *pkt = pkt_guard.get();
 
         err = ffmpeg.avcodec_receive_packet(ctx_guard.get(), pkt);
-        if (err == AVERROR(EAGAIN)) {
-            // Encoder needs more frames before producing output - this is normal
-            DEBUG_LOG(vlog, "Encoder buffering frame (EAGAIN) - waiting for more input");
-            return true;
+        if (err == AVERROR(EAGAIN) || err == AVERROR_EOF) {
+            // Trying again
+            ffmpeg.avcodec_send_frame(ctx_guard.get(), hw_frame_guard.get());
+            err = ffmpeg.avcodec_receive_packet(ctx_guard.get(), pkt);
+
+            if (err == AVERROR(EAGAIN)) {
+                DEBUG_LOG(vlog, "Encoder buffering frame (EAGAIN) - waiting for more input");
+
+                return false;
+            }
         }
 
         if (err == AVERROR_EOF) {
