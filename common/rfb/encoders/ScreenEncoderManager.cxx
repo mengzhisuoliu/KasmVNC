@@ -28,8 +28,6 @@
 
 namespace rfb {
     static LogWriter vlog("ScreenEncoderManager");
-    // We assume the primary screen is always 0
-    static constexpr uint8_t PRIMARY_SCREEN_INDEX = 0;
 
     template<uint8_t T>
     ScreenEncoderManager<T>::ScreenEncoderManager(const FFmpeg &ffmpeg_, const KasmVideoEncoders::EncoderConfig &encoder,
@@ -97,7 +95,7 @@ namespace rfb {
             return false;
         }
 
-        mask |= 1 << index;
+        mask |= 1ULL << index;
 
         ++count;
 
@@ -117,7 +115,7 @@ namespace rfb {
 
             --count;
         }
-        mask &= ~(1 << index);
+        mask &= ~(1ULL << index);
         screens[index] = {};
     }
 
@@ -180,7 +178,7 @@ namespace rfb {
             clear_screens(stale_screens);
         }
 
-        if (old_mask != mask || (mask > 0 && screens_to_refresh.empty()))
+        //if (old_mask != mask || (mask > 0 && screens_to_refresh.empty()))
             rebuild_screens_to_refresh();
 
         return true;
@@ -188,7 +186,8 @@ namespace rfb {
 
     template<uint8_t T>
     bool ScreenEncoderManager<T>::isSupported() const {
-        if (const auto *encoder = screens[PRIMARY_SCREEN_INDEX].encoder; encoder)
+        const auto index = screens_to_refresh[0];
+        if (const auto *encoder = screens[index].encoder; encoder)
             return encoder->isSupported();
 
         return false;
@@ -258,9 +257,10 @@ namespace rfb {
                 }
             }
         } else {
-            if (auto encoder = screens[PRIMARY_SCREEN_INDEX].encoder; encoder) {
+            const auto index = screens_to_refresh[0];
+            if (auto encoder = screens[index].encoder; encoder) {
                 if (encoder->render(pb, forceKeyFrame))
-                    send_frame(screens[PRIMARY_SCREEN_INDEX]);
+                    send_frame(screens[index]);
                 else
                     return false;
             }
