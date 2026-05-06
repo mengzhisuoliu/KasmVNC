@@ -417,6 +417,9 @@ static int vncConvertSelection(ClientPtr client, Atom selection,
     const unsigned char *data;
     unsigned len;
     vncGetBinaryClipboardData(dlp_get_mimetype(binatomidx), &data, &len);
+    if (data == NULL)
+        return BadMatch;
+
     rc = dixChangeWindowProperty(serverClient, pWin, realProperty,
                                  xaBinclips[binatomidx], 8, PropModeReplace,
                                  len, (unsigned char *) data, TRUE);
@@ -426,6 +429,9 @@ static int vncConvertSelection(ClientPtr client, Atom selection,
     const unsigned char *data;
     unsigned len;
     vncGetBinaryClipboardData("text/plain", &data, &len);
+
+    if (data == NULL)
+        return BadMatch;
 
     if ((target == xaSTRING) || (target == xaTEXT)) {
       char* latin1;
