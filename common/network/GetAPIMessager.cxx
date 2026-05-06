@@ -55,7 +55,7 @@ static const struct TightJPEGConfiguration conf[10] = {
 };
 
 GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_),
-					pb(nullptr), screenW(0), screenH(0), screenHash(0),
+					screenW(0), screenH(0), screenHash(0),
 					cachedW(0), cachedH(0), cachedQ(0),
 					ownerConnected(0), activeUsers(0),
 					sessionsInfo( "{\"users\":[]}"){
@@ -74,21 +74,47 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 }
 
 // from main thread
-void GetAPIMessager::mainUpdateScreen(rfb::PixelBuffer *pb_) {
-    pb = pb_;
-}
+void GetAPIMessager::mainUpdateScreen(rfb::PixelBuffer *pb) {
+    if (!pb)
+        return;
 
-void GetAPIMessager::lockScreenshots() {
-	pthread_mutex_lock(&screenMutex);
+    if (pthread_mutex_trylock(&screenMutex))
+        return;
 
-	screenW = screenH = 0;
-	screenHash = 0;
-	cachedW = cachedH = cachedQ = 0;
-	cachedJpeg.clear();
-}
+    int stride;
+    TRACE_STOPWATCH(shotstart);
 
-void GetAPIMessager::unlockScreenshots() {
-	pthread_mutex_unlock(&screenMutex);
+    const rdr::U8 *const buf = pb->getBuffer(pb->getRect(), &stride);
+
+    if (pb->width() != screenW || pb->height() != screenH) {
+        screenHash = 0;
+        screenW = pb->width();
+        screenH = pb->height();
+        screenPb.setPF(pb->getPF());
+        screenPb.setSize(screenW, screenH);
+
+        cachedW = cachedH = cachedQ = 0;
+        cachedJpeg.clear();
+    }
+
+    const uint64_t newHash = XXH64(buf, pb->area() * 4, 0);
+    if (newHash != screenHash) {
+        cachedW = cachedH = cachedQ = 0;
+        cachedJpeg.clear();
+
+        screenHash = newHash;
+        rdr::U8 *rw = screenPb.getBufferRW(screenPb.getRect(), &stride);
+        memcpy(rw, buf, screenW * screenH * 4);
+        screenPb.commitBufferRW(screenPb.getRect());
+    }
+
+    if (!pthread_mutex_lock(&frameStatMutex)) {
+        serverFrameStats.shot = msSince(&shotstart);
+        pthread_mutex_unlock(&frameStatMutex);
+    }
+
+    TRACE_STOPWATCH_PRINT_MS(vlog, shotstart);
+    pthread_mutex_unlock(&screenMutex);
 }
 
 void GetAPIMessager::mainUpdateBottleneckStats(const char userid[], const char stats[]) {
@@ -175,55 +201,24 @@ void GetAPIMessager::mainUpdateSessionsInfo(std::string newSessionsInfo)
 uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	const uint8_t q, const bool dedup,
 	uint32_t &len, uint8_t *staging) {
-    unsigned shottime = 0;
-    int stride;
-    TRACE_STOPWATCH(shotstart);
+	uint8_t *ret = nullptr;
+	len = 0;
 
-    uint8_t *ret = nullptr;
-    len = 0;
+	if (q > 9 || !staging)
+		return nullptr;
 
-    if (pthread_mutex_lock(&screenMutex))
-        return nullptr;
-
-    if (!pb) {
-        pthread_mutex_unlock(&screenMutex);
-        return nullptr;
-    }
-
-    const rdr::U8 *buf = pb->getBuffer(pb->getRect(), &stride);
-
-    if (pb->width() != screenW || pb->height() != screenH) {
-        screenHash = 0;
-        screenW = pb->width();
-        screenH = pb->height();
-        screenPb.setPF(pb->getPF());
-        screenPb.setSize(screenW, screenH);
-
-        cachedW = cachedH = cachedQ = 0;
-        cachedJpeg.clear();
-    }
-
-    const uint64_t newHash = XXH64(buf, pb->area() * 4, 0);
-    if (newHash != screenHash) {
-        cachedW = cachedH = cachedQ = 0;
-        cachedJpeg.clear();
-
-        screenHash = newHash;
-        rdr::U8 *rw = screenPb.getBufferRW(screenPb.getRect(), &stride);
-        memcpy(rw, buf, screenW * screenH * 4);
-        screenPb.commitBufferRW(screenPb.getRect());
-    }
+	if (pthread_mutex_lock(&screenMutex))
+	    return nullptr;
 
     if (w > screenW)
         w = screenW;
     if (h > screenH)
         h = screenH;
 
-    if (!screenW || !screenH)
+    if (!w || !h) {
         vlog.error("Screenshot requested but no screenshot exists (screen hasn't been viewed)");
-
-    if (!w || !h || q > 9 || !staging) {
         pthread_mutex_unlock(&screenMutex);
+
         return nullptr;
     }
 
@@ -245,10 +240,11 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 		// Encode the new JPEG, cache it
 		JpegCompressor jc;
 
-	    const int quality = conf[q].quality;
+		const int quality = conf[q].quality;
 		const int subsampling = conf[q].subsampling;
 
 		jc.clear();
+		int stride;
 
 		if (w != screenW || h != screenH) {
 			const float xdiff = w / (float) screenW;
@@ -259,7 +255,7 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 			const uint16_t newh = screenH * diff;
 
 			const PixelBuffer *scaled = progressiveBilinearScale(&screenPb, neww, newh, diff);
-			buf = scaled->getBuffer(scaled->getRect(), &stride);
+            const rdr::U8 *const buf = scaled->getBuffer(scaled->getRect(), &stride);
 
 			jc.compress(buf, stride, scaled->getRect(),
 					scaled->getPF(), quality, subsampling);
@@ -271,7 +267,7 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 
 			vlog.info("Returning scaled screenshot");
 		} else {
-			buf = screenPb.getBuffer(screenPb.getRect(), &stride);
+            const rdr::U8 *const buf = screenPb.getBuffer(screenPb.getRect(), &stride);
 
 			jc.compress(buf, stride, screenPb.getRect(),
 					screenPb.getPF(), quality, subsampling);
@@ -292,12 +288,6 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	}
 
 	pthread_mutex_unlock(&screenMutex);
-
-    shottime = msSince(&shotstart);
-    if (!pthread_mutex_lock(&frameStatMutex)) {
-        serverFrameStats.shot = shottime;
-        pthread_mutex_unlock(&frameStatMutex);
-    }
 
 	return ret;
 }

@@ -126,8 +126,6 @@ void XserverDesktop::setFramebuffer(int w, int h, void* fbptr, int stride_)
 {
   ScreenSet layout;
 
-  server->lockScreenBuffer();
-
   width_ = w;
   height_ = h;
 
@@ -149,7 +147,6 @@ void XserverDesktop::setFramebuffer(int w, int h, void* fbptr, int stride_)
   layout = ::computeScreenLayout(&outputIdMap);
 
   server->setPixelBuffer(this, layout);
-  server->unlockScreenBuffer();
 }
 
 void XserverDesktop::refreshScreenLayout()

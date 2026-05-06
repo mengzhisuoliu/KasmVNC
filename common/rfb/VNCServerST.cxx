@@ -143,7 +143,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
     renderedCursorInvalid(false),
     queryConnectionHandler(nullptr), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(nullptr), trackingFrameStats(0),
+    frameTimer(this), screenshotTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false), encoder_probe(encoder_probe_)
 {
     auto to_string = [](const bool value) {
@@ -263,6 +263,8 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
             throw std::invalid_argument("Benchmarking video file does not exist");
         benchmark(file_name, Server::benchmarkResults.getValueStr());
     }
+
+    screenshotTimer.start(SCREENSHOT_INTERVAL_MS);
 }
 
 VNCServerST::~VNCServerST()
@@ -507,10 +509,6 @@ void VNCServerST::setPixelBuffer(PixelBuffer* pb_, const ScreenSet& layout)
   renderedCursorInvalid = true;
   add_changed(pb->getRect());
 
-  if (apimessager) {
-      apimessager->mainUpdateScreen(pb);
-  }
-
   // Make sure that we have at least one screen
   if (screenLayout.num_screens() == 0)
     screenLayout.add_screen(Screen(0, 0, 0, pb->width(), pb->height(), 0));
@@ -522,6 +520,8 @@ void VNCServerST::setPixelBuffer(PixelBuffer* pb_, const ScreenSet& layout)
     // Since the new pixel buffer means an ExtendedDesktopSize needs to
     // be sent anyway, we don't need to call screenLayoutChange.
   }
+
+  updateScreenshot = true;
 }
 
 void VNCServerST::setPixelBuffer(PixelBuffer* pb_)
@@ -767,6 +767,14 @@ bool VNCServerST::handleTimeout(Timer* t)
 
     return true;
   }
+
+    if (t == &screenshotTimer) {
+        if (apimessager) {
+            apimessager->mainUpdateScreen(getPixelBuffer());
+        }
+
+        return true;
+    }
 
   return false;
 }
@@ -1109,6 +1117,10 @@ void VNCServerST::writeUpdate()
 
   DEBUG_STOPWATCH_PRINT_US(slog, perm_check);
   if (apimessager) {
+      if (updateScreenshot) {
+          apimessager->mainUpdateScreen(pb);
+          updateScreenshot = false;
+      }
     trackingFrameStats = 0;
     checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
@@ -1370,16 +1382,4 @@ void VNCServerST::notifyUserAction(const VNCSConnectionST* newConnection, std::s
   }
   logNotification.append( std::to_string(notificationsSent) + " clients");
   slog.info("%s", logNotification.c_str());
-}
-
-void VNCServerST::lockScreenBuffer() const {
-    if (apimessager) {
-        apimessager->lockScreenshots();
-    }
-}
-
-void VNCServerST::unlockScreenBuffer() const {
-    if (apimessager) {
-        apimessager->unlockScreenshots();
-    }
 }

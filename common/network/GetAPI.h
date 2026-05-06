@@ -35,8 +35,6 @@ namespace network {
 
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
-    void lockScreenshots();
-    void unlockScreenshots();
     void mainUpdateBottleneckStats(const char userid[], const char stats[]);
     void mainClearBottleneckStats(const char userid[]);
     void mainUpdateServerFrameStats(uint8_t changedPerc, uint32_t all,
@@ -105,7 +103,6 @@ namespace network {
     const char *passwdfile;
 
     pthread_mutex_t screenMutex;
-    rfb::PixelBuffer *pb;
     rfb::ManagedPixelBuffer screenPb;
     uint16_t screenW, screenH;
     uint64_t screenHash;

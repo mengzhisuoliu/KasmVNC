@@ -206,7 +206,7 @@ namespace rfb {
     do {                                                    \
         STOPWATCH_END_MS(name, name##_end);                 \
         log.debug("Time " #name ": %u ms", name##_end);     \
-    } while (0);
+    } while (0)
 
 #define STOPWATCH_PRINT_MSG_US(log, name, msg)              \
     do {                                                    \

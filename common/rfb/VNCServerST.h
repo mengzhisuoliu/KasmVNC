@@ -51,6 +51,7 @@ namespace rfb {
                       public Timer::Callback,
                       public network::SocketServer {
   public:
+    constexpr static int SCREENSHOT_INTERVAL_MS = 60000;
     // -=- Constructors
 
     //   Create a server exporting the supplied desktop.
@@ -205,15 +206,13 @@ namespace rfb {
 
     enum UserActionType {Join, Leave};
     void notifyUserAction(const VNCSConnectionST* newConnection, std::string& user_name, const UserActionType action_type);
-    void lockScreenBuffer() const;
-    void unlockScreenBuffer() const;
 
   protected:
 
     friend class VNCSConnectionST;
 
     // Timer callbacks
-    virtual bool handleTimeout(Timer* t);
+    bool handleTimeout(Timer* t) override;
 
     // - Internal methods
 
@@ -281,6 +280,7 @@ namespace rfb {
     bool disableclients;
 
     Timer frameTimer;
+    Timer screenshotTimer;
 
     int inotify_fd{-1};
 
@@ -304,6 +304,7 @@ namespace rfb {
                           rdr::U8 &trackingFrameStats, char trackingClient[]);
 
     bool sendWatermark;
+    bool updateScreenshot{false};
     const video_encoders::EncoderProbe &encoder_probe;
   };
 
