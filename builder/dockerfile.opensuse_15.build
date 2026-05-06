@@ -49,9 +49,8 @@ RUN zypper install -ny \
   zlib-devel \
   libva-devel
 
-RUN useradd -u 1000 docker && \
-  groupadd -g 1000 docker && \
-  usermod -a -G docker docker
+RUN groupadd -g 1000 docker && \
+  useradd -u 1000 -g docker docker
 
 RUN ARCH=$(arch) && \
   CMAKE_URL="https://cmake.org/files/v3.22/cmake-3.22.0" && \
