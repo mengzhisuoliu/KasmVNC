@@ -60,11 +60,7 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 					ownerConnected(0), activeUsers(0),
 					sessionsInfo( "{\"users\":[]}"){
 
-	pthread_mutexattr_t screenAttr;
-	pthread_mutexattr_init(&screenAttr);
-	pthread_mutexattr_settype(&screenAttr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&screenMutex, &screenAttr);
-	pthread_mutexattr_destroy(&screenAttr);
+	pthread_mutex_init(&screenMutex, nullptr);
 	pthread_mutex_init(&userMutex, NULL);
 	pthread_mutex_init(&statMutex, NULL);
 	pthread_mutex_init(&frameStatMutex, NULL);
