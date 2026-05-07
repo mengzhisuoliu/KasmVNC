@@ -593,6 +593,9 @@ void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char 
 void VNCServerST::getBinaryClipboardData(const char* mime, const unsigned char **data,
                                          unsigned *len)
 {
+    *data = nullptr;
+    *len = 0;
+
   if (!clipboardClient)
     return;
   clipboardClient->getBinaryClipboardData(mime, data, len);
