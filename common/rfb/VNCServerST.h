@@ -51,6 +51,7 @@ namespace rfb {
                       public Timer::Callback,
                       public network::SocketServer {
   public:
+    constexpr static int FIRST_SCREENSHOT_INTERVAL_MS = 5000;
     constexpr static int SCREENSHOT_INTERVAL_MS = 60000;
     // -=- Constructors
 

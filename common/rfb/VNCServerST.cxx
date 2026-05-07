@@ -264,7 +264,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
         benchmark(file_name, Server::benchmarkResults.getValueStr());
     }
 
-    screenshotTimer.start(SCREENSHOT_INTERVAL_MS);
+    screenshotTimer.start(FIRST_SCREENSHOT_INTERVAL_MS);
 }
 
 VNCServerST::~VNCServerST()
@@ -772,6 +772,9 @@ bool VNCServerST::handleTimeout(Timer* t)
         if (apimessager) {
             apimessager->mainUpdateScreen(getPixelBuffer());
         }
+
+        if (screenshotTimer.getTimeoutMs() < SCREENSHOT_INTERVAL_MS)
+            screenshotTimer.start(SCREENSHOT_INTERVAL_MS);
 
         return true;
     }
