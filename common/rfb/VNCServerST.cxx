@@ -773,8 +773,11 @@ bool VNCServerST::handleTimeout(Timer* t)
             apimessager->mainUpdateScreen(getPixelBuffer());
         }
 
-        if (screenshotTimer.getTimeoutMs() < SCREENSHOT_INTERVAL_MS)
+        if (screenshotTimer.getTimeoutMs() < SCREENSHOT_INTERVAL_MS) {
             screenshotTimer.start(SCREENSHOT_INTERVAL_MS);
+
+            return false;
+        }
 
         return true;
     }
