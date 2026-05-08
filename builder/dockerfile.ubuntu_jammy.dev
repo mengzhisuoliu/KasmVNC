@@ -73,8 +73,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 RUN apt install -y nodejs nginx
 
 # x86_64 specific operations
+# Packages required for VA-API hardware acceleration (Mesa + Intel)
 RUN if [ "$(arch)" = "x86_64" ]; then \
-        apt-get update && apt-get install -y intel-media-va-driver-non-free; \
+        apt-get update && apt-get install -y vainfo mesa-va-drivers mesa-vulkan-drivers \
+            intel-media-va-driver-non-free; \
     fi
 
 ENV SCRIPTS_DIR=/tmp/scripts
