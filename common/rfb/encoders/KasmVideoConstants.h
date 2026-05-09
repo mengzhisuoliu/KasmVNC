@@ -21,17 +21,19 @@
 #include <cassert>
 
 namespace rfb {
-    static constexpr unsigned int SupportedEncoderCount = 3;
+    // NOTE: SupportedEncoderCount represents the number of actively supported codec families (H264, H265, AV1)
+    static constexpr unsigned int SupportedEncoderCount = 5;
+
     // Compression control
     static constexpr unsigned int kasmVideoH264 = 0x01 << 4; // H.264 encoding
     static constexpr unsigned int kasmVideoH265 = 0x02 << 4; // H.265 encoding
     static constexpr unsigned int kasmVideoAV1 = 0x03 << 4; // AV1 encoding
+    static constexpr unsigned int kasmVideoVP8 = 0x04 << 4; // VP8 encoding (not yet supported)
+    static constexpr unsigned int kasmVideoVP9 = 0x05 << 4; // VP9 encoding (not yet supported)
     static constexpr unsigned int kasmVideoSkip = 0x00 << 4; // Skip frame
 
-    static constexpr auto drm_device_paths = std::to_array<const char *>({
-        "/dev/dri/renderD128",
-        "/dev/dri/card0",
-        "/dev/dri/renderD129",
-        "/dev/dri/card1"
+    static constexpr auto dri_node_paths = std::to_array<const char *>({
+        "renderD128",
+        "renderD129"
     });
 } // namespace rfb

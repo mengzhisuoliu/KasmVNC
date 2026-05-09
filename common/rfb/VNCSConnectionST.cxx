@@ -656,8 +656,8 @@ void VNCSConnectionST::approveConnectionOrClose(bool accept,
 
 void VNCSConnectionST::authSuccess()
 {
-  lastEventTime = time(0);
-  connectionTime = time(0); // Record when the user connected
+  lastEventTime = time(nullptr);
+  connectionTime = time(nullptr); // Record when the user connected
   vlog.info("User %s connected at %ld", clientUsername.c_str(), connectionTime);
 
   server->startDesktop();
@@ -733,7 +733,7 @@ void VNCSConnectionST::queryConnection(const char* userName)
 
 void VNCSConnectionST::clientInit(bool shared)
 {
-  lastEventTime = time(0);
+  lastEventTime = time(nullptr);
   if (rfb::Server::alwaysShared || reverseConnection) shared = true;
   if (!(accessRights & AccessNonShared)) shared = true;
   if (rfb::Server::neverShared) shared = false;
@@ -774,7 +774,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
 
 void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
-  pointerEventTime = lastEventTime = time(0);
+  pointerEventTime = lastEventTime = time(nullptr);
   server->lastUserInputTime = lastEventTime;
   if (!(accessRights & AccessPtrEvents)) {
     // This particular event is lost, but it's a corner case - you removed write access
@@ -827,7 +827,7 @@ void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int b
     if (buttonMask)
       server->pointerClient = this;
     else
-      server->pointerClient = 0;
+      server->pointerClient = nullptr;
 
     bool skipclick = false, skiprelease = false;
     if (server->DLPRegion.enabled) {
@@ -877,7 +877,7 @@ void VNCSConnectionST::keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down) {
     return;
   }
 
-  lastEventTime = time(0);
+  lastEventTime = time(nullptr);
   server->lastUserInputTime = lastEventTime;
   if (!(accessRights & AccessKeyEvents)) return;
   if (!rfb::Server::acceptKeyEvents) return;
@@ -889,7 +889,7 @@ void VNCSConnectionST::keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down) {
     return;
   }
 
-  gettimeofday(&lastKeyEvent, NULL);
+  gettimeofday(&lastKeyEvent, nullptr);
 
   if (down) {
     keylog(keysym, sock->getPeerAddress());
@@ -1038,6 +1038,8 @@ void VNCSConnectionST::framebufferUpdateRequest(const Rect& r,bool incremental)
     // Non-incremental update - treat as if area requested has changed
     updates.add_changed(reqRgn);
 
+    pendingClientRefresh = true;
+
     // And send the screen layout to the client (which, unlike the
     // framebuffer dimensions, the client doesn't get during init)
     writer()->writeExtendedDesktopSize();
@@ -1101,7 +1103,7 @@ void VNCSConnectionST::fence(rdr::U32 flags, unsigned len, const char data[])
       fenceFlags = flags & (fenceFlagBlockBefore | fenceFlagBlockAfter | fenceFlagSyncNext);
       fenceDataLen = len;
       delete [] fenceData;
-      fenceData = NULL;
+      fenceData = nullptr;
       if (len > 0) {
         fenceData = new char[len];
         memcpy(fenceData, data, len);
@@ -1320,7 +1322,7 @@ bool VNCSConnectionST::isCongested()
 
   if (eta > 1000 / rfb::Server::frameRate) {
     struct timeval now;
-    gettimeofday(&now, NULL);
+    gettimeofday(&now, nullptr);
 
     bstats[BS_NET_SLOW].push_back(now);
     bstats_total[BS_NET_SLOW]++;
@@ -1411,7 +1413,7 @@ void VNCSConnectionST::writeFramebufferUpdate()
   congestion.updatePosition(sock->outStream().length());
 
   struct timeval now;
-  gettimeofday(&now, NULL);
+  gettimeofday(&now, nullptr);
   bstats[BS_FRAME].push_back(now);
   bstats_total[BS_FRAME]++;
 }
@@ -1571,7 +1573,10 @@ void VNCSConnectionST::writeDataUpdate()
                   server->msToNextUpdate() / 1000;
 
   if (!ui.is_empty()) {
-    encodeManager.writeUpdate(ui, server->screenLayout, server->getPixelBuffer(), cursor, maxUpdateSize);
+    encodeManager.writeUpdate(ui, server->screenLayout, server->getPixelBuffer(), cursor, pendingClientRefresh, maxUpdateSize);
+    if (pendingClientRefresh)
+        pendingClientRefresh = false;
+
     copypassed.clear();
     gettimeofday(&lastRealUpdate, nullptr);
     losslessTimer.start(losslessThreshold);
@@ -1657,7 +1662,7 @@ void VNCSConnectionST::sendStats(const bool toClient) {
   struct timeval now;
 
   // Prune too old stats from the recent lists
-  gettimeofday(&now, NULL);
+  gettimeofday(&now, nullptr);
 
   pruneStatList(bstats[BS_CPU_CLOSE], now);
   pruneStatList(bstats[BS_CPU_SLOW], now);

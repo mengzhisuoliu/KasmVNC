@@ -189,7 +189,6 @@ EncodeManager::EncodeManager(SConnection *conn_, EncCache *encCache_, const FFmp
             encoder_probe.get_best_encoder(),
             encoder_probe.get_available_encoders(),
             conn,
-            encoder_probe.get_drm_device_path(),
             {conn_->cp.width,
                 conn_->cp.height,
                 static_cast<uint8_t>(Server::frameRate),
@@ -354,11 +353,11 @@ void EncodeManager::pruneLosslessRefresh(const Region& limits)
 }
 
 void EncodeManager::writeUpdate(const UpdateInfo& ui, const ScreenSet &layout, const PixelBuffer* pb,
-                                const RenderedCursor* renderedCursor,
+                                const RenderedCursor* renderedCursor, bool fullRefreshRequested,
                                 size_t maxUpdateSize)
 {
     curMaxUpdateSize = maxUpdateSize;
-    doUpdate(true, ui.changed, ui.copied, ui.copy_delta, ui.copypassed, layout, pb, renderedCursor);
+    doUpdate(true, ui.changed, ui.copied, ui.copy_delta, ui.copypassed, layout, pb, renderedCursor, fullRefreshRequested);
 }
 
 void EncodeManager::writeLosslessRefresh(const Region& req,  const ScreenSet &layout, const PixelBuffer* pb,
@@ -377,7 +376,8 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
                              const std::vector<CopyPassRect>& copypassed,
                              const ScreenSet &layout,
                              const PixelBuffer* pb,
-                             const RenderedCursor* renderedCursor) {
+                             const RenderedCursor* renderedCursor,
+                             bool fullRefreshRequested) {
     int nRects;
     Region changed, cursorRegion;
     struct timeval start;
@@ -439,9 +439,13 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     writeCopyRects(copied, copyDelta);
     writeCopyPassRects(copypassed);
 
-    bool video_mode = video_mode_available && conn->cp.encoder != KasmVideoEncoders::Encoder::unavailable;
+    //gettimeofday(&t5, NULL);
+
+    bool video_mode = video_mode_available && conn->cp.encoder_config.encoder != KasmVideoEncoders::Encoder::unavailable;
     if (video_mode) {
-        video_mode = updateVideo(changed, layout, pb);
+        video_mode = updateVideo(changed, layout, pb, fullRefreshRequested);
+        if (!video_mode)
+            conn->cp.encoder_config.encoder = KasmVideoEncoders::Encoder::unavailable;
     }
 
     if (!video_mode) {
@@ -476,40 +480,32 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     updateQualities();
 
-    printf("TOTAL FRAME TOOK: %d\n", msSince(&start));
+    DEBUG_STOPWATCH_PRINT_MSG_MS(vlog, start, "FRAME TOTAL TIME");
     conn->writer()->writeFramebufferUpdateEnd();
 }
 
-bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, const PixelBuffer *pb) {
+bool EncodeManager::updateVideo(const Region &changed, const ScreenSet &layout, const PixelBuffer *pb, bool fullRefreshRequested) {
     auto *screen_encoder_manager = dynamic_cast<ScreenEncoderManager<> *>(encoders[encoderKasmVideo]);
     if (!screen_encoder_manager)
         return false;
 
-    if (screen_encoder_manager->get_encoder() != conn->cp.encoder) {
-        delete encoders[encoderKasmVideo];
-
-        screen_encoder_manager = new ScreenEncoderManager(ffmpeg,
-            conn->cp.encoder,
+    if (screen_encoder_manager->get_encoder_config().encoder != conn->cp.encoder_config.encoder) {
+        screen_encoder_manager->clear();
+        screen_encoder_manager->set_params(conn->cp.encoder_config,
             encoder_probe.get_available_encoders(),
-            conn,
-            encoder_probe.get_drm_device_path(),
             {0,
                 0,
                 static_cast<uint8_t>(Server::frameRate),
                 static_cast<uint8_t>(Server::groupOfPicture),
                 static_cast<uint8_t>(Server::videoQualityCRFCQP)});
-
-        if (!screen_encoder_manager)
-            return false;
-
-        encoders[encoderKasmVideo] = screen_encoder_manager;
     }
 
     if (!screen_encoder_manager->sync_layout(layout, changed))
         return false;
 
     static const Palette palette;
-    screen_encoder_manager->writeRect(pb, palette);
+    if (!screen_encoder_manager->writeFrame(pb, palette, fullRefreshRequested))
+        return false;
 
     std::vector<Rect> rects;
     changed.get_rects(&rects);

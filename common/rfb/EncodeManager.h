@@ -71,7 +71,7 @@ namespace rfb {
     void pruneLosslessRefresh(const Region& limits);
 
     void writeUpdate(const UpdateInfo& ui, const ScreenSet &layout, const PixelBuffer* pb,
-                     const RenderedCursor* renderedCursor,
+                     const RenderedCursor* renderedCursor, bool fullRefreshRequested,
                      size_t maxUpdateSize = 2000);
 
     void writeLosslessRefresh(const Region& req,  const ScreenSet &layout, const PixelBuffer* pb,
@@ -105,9 +105,10 @@ namespace rfb {
                   const std::vector<CopyPassRect> &copypassed,
                   const ScreenSet &layout,
                   const PixelBuffer* pb,
-                  const RenderedCursor* renderedCursor);
+                  const RenderedCursor* renderedCursor,
+                  bool fullRefreshRequested = false);
 
-    bool updateVideo(const Region& changed, const ScreenSet &layout, const PixelBuffer* pb);
+    bool updateVideo(const Region& changed, const ScreenSet &layout, const PixelBuffer* pb, bool fullRefreshRequested);
 
     void prepareEncoders(bool allowLossy);
 

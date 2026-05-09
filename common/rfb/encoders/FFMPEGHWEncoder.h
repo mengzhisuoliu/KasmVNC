@@ -24,7 +24,8 @@
 #include "rfb/ffmpeg.h"
 
 namespace rfb {
-class FFMPEGVAAPIEncoder final : public VideoEncoder {
+template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
+class FFMPEGHWEncoder final : public VideoEncoder {
     Screen layout;
     const FFmpeg &ffmpeg;
 
@@ -32,7 +33,6 @@ class FFMPEGVAAPIEncoder final : public VideoEncoder {
     FFmpeg::FrameGuard hw_frame_guard;
     FFmpeg::PacketGuard pkt_guard;
     FFmpeg::ContextGuard ctx_guard;
-    FFmpeg::SwsContextGuard sws_guard;
     FFmpeg::BufferGuard hw_device_ctx_guard;
     FFmpeg::BufferGuard hw_frames_ref_guard;
 
@@ -50,14 +50,17 @@ class FFMPEGVAAPIEncoder final : public VideoEncoder {
 
     template<typename T>
     friend class EncoderBuilder;
-    FFMPEGVAAPIEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
+    FFMPEGHWEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
         const char *dri_node, VideoEncoderParams params);
 
 public:
     bool isSupported() const override;
     void writeRect(const PixelBuffer *pb, const Palette &palette) override;
     void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
-    bool render(const PixelBuffer *pb) override;
+    bool render(const PixelBuffer *pb, bool forceKeyFrame = false) override;
     void writeSkipRect() override;
 };
+
+    using FFMPEGVAAPIEncoder = FFMPEGHWEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>;
+    using FFMPEGCudaEncoder = FFMPEGHWEncoder<AV_HWDEVICE_TYPE_CUDA, AV_PIX_FMT_CUDA>;
 } // namespace rfb

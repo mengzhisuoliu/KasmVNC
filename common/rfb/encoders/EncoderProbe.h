@@ -18,19 +18,26 @@
 #pragma once
 
 #include <vector>
-#include "KasmVideoConstants.h"
+#include <span>
 #include "SupportedVideoEncoders.h"
 #include "rfb/ffmpeg.h"
 
 namespace rfb::video_encoders {
     class EncoderProbe {
-        KasmVideoEncoders::Encoder best_encoder{KasmVideoEncoders::Encoder::h264_software};
-        KasmVideoEncoders::Encoders available_encoders;
-        std::string drm_device_path;
+        KasmVideoEncoders::EncoderConfig best_encoder{KasmVideoEncoders::Encoder::h264_software};
+        KasmVideoEncoders::EncoderConfigs available_encoder_configs;
         FFmpeg &ffmpeg;
 
+        struct EncoderCandidate {
+            KasmVideoEncoders::Encoder encoder;
+            AVCodecID codec_id;
+            AVHWDeviceType hw_type;
+        };
+
         explicit EncoderProbe(FFmpeg &ffmpeg, const std::vector<std::string_view> &parsed_encoders, const char *dri_node);
-        KasmVideoEncoders::Encoders probe(const char *dri_node);
+        static bool dri_node_supports_hwdevice_type(const char *dri_node, int hw_type);
+        bool try_open_codec(const char *dri_node, const AVCodec *codec, const EncoderCandidate &candidate) const;
+        KasmVideoEncoders::EncoderConfigs probe(const char *dri_node, std::span<EncoderCandidate> candidates);
 
     public:
         EncoderProbe(const EncoderProbe &) = delete;
@@ -46,22 +53,18 @@ namespace rfb::video_encoders {
 
         // [[nodiscard]] static bool is_acceleration_available();
 
-        [[nodiscard]] KasmVideoEncoders::Encoder get_best_encoder() const {
+        [[nodiscard]] KasmVideoEncoders::EncoderConfig get_best_encoder() const {
             return best_encoder;
         }
 
-        [[nodiscard]] const KasmVideoEncoders::Encoders &get_available_encoders() const {
-            return available_encoders;
+        [[nodiscard]] const KasmVideoEncoders::EncoderConfigs &get_available_encoders() const {
+            return available_encoder_configs;
         }
 
-        [[nodiscard]] const KasmVideoEncoders::Encoders &update_encoders(const std::vector<std::string_view> &codecs) {
+        /*[[nodiscard]] const KasmVideoEncoders::Encoders &update_encoders(const std::vector<std::string_view> &codecs) {
             available_encoders = SupportedVideoEncoders::filter_available_encoders(SupportedVideoEncoders::map_encoders(codecs), available_encoders);
             return available_encoders;
-        }
-
-        [[nodiscard]] const char *get_drm_device_path() const {
-            return drm_device_path.c_str();
-        }
+        }*/
     };
 
 } // namespace rfb::video_encoders

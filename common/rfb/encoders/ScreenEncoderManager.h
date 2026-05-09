@@ -16,7 +16,7 @@
  * USA.
  */
 #pragma once
-#include <tbb/spin_mutex.h>
+#include <tbb/task_arena.h>
 #include <vector>
 #include "KasmVideoConstants.h"
 #include "VideoEncoder.h"
@@ -28,34 +28,33 @@ inline constexpr uint8_t MAX_SCREENS = 8;
 namespace rfb {
     template<uint8_t T = MAX_SCREENS>
     class ScreenEncoderManager final : public Encoder {
+        using mask_t = uint64_t;
         static_assert(
-            T <= std::numeric_limits<uint64_t>::digits, "ScreenEncoderManager mask should be changed as current mask supports T <= 64");
+            T <= std::numeric_limits<mask_t>::digits, "ScreenEncoderManager mask should be changed as current mask supports T <= 64");
         struct screen_t {
             Screen layout{};
             VideoEncoder *encoder{};
             bool dirty{};
         };
 
-        uint8_t head{};
         uint8_t count{};
-
-        uint64_t mask{};
+        mask_t mask{};
         std::vector<uint8_t> screens_to_refresh;
-        tbb::spin_mutex conn_mutex;
 
         std::array<screen_t, T> screens{};
+        tbb::task_arena arena;
         const FFmpeg &ffmpeg;
         VideoEncoderParams current_params;
 
-        KasmVideoEncoders::Encoder base_video_encoder;
-        std::vector<KasmVideoEncoders::Encoder> available_encoders;
-        const char *dri_node{};
+        KasmVideoEncoders::EncoderConfig base_video_encoder;
+        KasmVideoEncoders::EncoderConfigs available_encoders;
 
         [[nodiscard]] VideoEncoder *add_encoder(const Screen &layout) const;
         bool add_screen(uint8_t index, const Screen &layout);
         [[nodiscard]] size_t get_screen_count() const;
         void remove_screen(uint8_t index);
         void rebuild_screens_to_refresh();
+        void clear_screens(mask_t clear_mask);
 
     public:
         struct stats_t {
@@ -83,8 +82,8 @@ namespace rfb {
             return screens.end();
         }
 
-        explicit ScreenEncoderManager(const FFmpeg &ffmpeg_, KasmVideoEncoders::Encoder encoder,
-            const std::vector<KasmVideoEncoders::Encoder> &encoders, SConnection *conn, const char *dri_node, VideoEncoderParams params);
+        explicit ScreenEncoderManager(const FFmpeg &ffmpeg_, const KasmVideoEncoders::EncoderConfig &encoder,
+            const KasmVideoEncoders::EncoderConfigs &encoders, SConnection *conn, VideoEncoderParams params);
         ~ScreenEncoderManager() override;
 
         ScreenEncoderManager(const ScreenEncoderManager &) = delete;
@@ -92,15 +91,20 @@ namespace rfb {
         ScreenEncoderManager(ScreenEncoderManager &&) = delete;
         ScreenEncoderManager &operator=(ScreenEncoderManager &&) = delete;
 
+        void clear();
+        void set_params(const KasmVideoEncoders::EncoderConfig &encoder, const KasmVideoEncoders::EncoderConfigs &encoders,
+            VideoEncoderParams params);
+
         bool sync_layout(const ScreenSet &layout, const Region &region);
-        [[nodiscard]] KasmVideoEncoders::Encoder get_encoder() const {
+        [[nodiscard]] KasmVideoEncoders::EncoderConfig get_encoder_config() const {
             return base_video_encoder;
         }
 
         // Encoder
         [[nodiscard]] bool isSupported() const override;
 
-        void writeRect(const PixelBuffer *pb, const Palette &palette) override;
+        bool writeFrame(const PixelBuffer *pb, const Palette &palette, bool forceKeyFrame = false);
+        void writeRect(const PixelBuffer *pb, const Palette &palette) override {}
         void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
 
     private:

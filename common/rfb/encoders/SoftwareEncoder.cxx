@@ -16,10 +16,6 @@
  * USA.
  */
 #include "SoftwareEncoder.h"
-extern "C" {
-#include <libavutil/imgutils.h>
-#include <libavutil/opt.h>
-}
 #include "KasmVideoConstants.h"
 #include <rfb/LogWriter.h>
 #include <rfb/SConnection.h>
@@ -28,6 +24,8 @@ extern "C" {
 #include <rfb/ffmpeg.h>
 #include <fmt/format.h>
 #include <rfb/encoders/utils.h>
+#include <libyuv.h>
+#include "EncoderConfiguration.h"
 
 static rfb::LogWriter vlog("SoftwareEncoder");
 
@@ -58,7 +56,7 @@ namespace rfb {
         return conn->cp.supportsEncoding(encodingKasmVideo);
     }
 
-    bool SoftwareEncoder::render(const PixelBuffer *pb) {
+    bool SoftwareEncoder::render(const PixelBuffer *pb, bool forceKeyFrame) {
         // compress
         int stride;
 
@@ -96,18 +94,28 @@ namespace rfb {
             frame->pict_type = AV_PICTURE_TYPE_NONE;
         }
 
-        const uint8_t *src_data[1] = {buffer};
-        const int src_line_size[1] = {stride * bpp}; // RGB has bpp bytes per pixel
+        if (forceKeyFrame)
+            frame->pict_type = AV_PICTURE_TYPE_I;
 
-        if (ffmpeg.sws_scale(sws_guard.get(), src_data, src_line_size, 0, height, frame->data, frame->linesize) < 0) {
-            vlog.error("Error while scaling image");
+        const int src_stride_bytes = stride * bpp;
+        int err = libyuv::ARGBToI420(buffer,
+            src_stride_bytes,
+            frame->data[0],
+            frame->linesize[0],
+            frame->data[1],
+            frame->linesize[1],
+            frame->data[2],
+            frame->linesize[2],
+            dst_width,
+            dst_height);
+        if (err != 0) {
+            vlog.error("libyuv::ARGBToI420 failed with code: %d", err);
             return false;
         }
 
         frame->pts = pts++;
 
-        int err = ffmpeg.avcodec_send_frame(ctx_guard.get(), frame);
-        if (err < 0) {
+        if (ffmpeg.avcodec_send_frame(ctx_guard.get(), frame) < 0) {
             vlog.error("Error sending frame to codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
             return false;
         }
@@ -128,7 +136,7 @@ namespace rfb {
         }
 
         if (pkt->flags & AV_PKT_FLAG_KEY)
-            vlog.debug("Key frame %ld", frame->pts);
+            DEBUG_LOG(vlog, "Key frame %ld", frame->pts);
 
         return true;
     }
@@ -142,7 +150,7 @@ namespace rfb {
         os->writeU8(pkt->flags & AV_PKT_FLAG_KEY);
         encoders::write_compact(os, pkt->size);
         os->writeBytes(&pkt->data[0], pkt->size);
-        vlog.debug("Screen id %d, codec %d, frame size:  %d", layout.id, msg_codec_id, pkt->size);
+        DEBUG_LOG(vlog, "Screen id %d, codec %d, frame size:  %d", layout.id, msg_codec_id, pkt->size);
 
         ffmpeg.av_packet_unref(pkt);
     }
@@ -178,6 +186,7 @@ namespace rfb {
         // ctx->pix_fmt = AV_PIX_FMT_YUV444P; // AV_PIX_FMT_YUV420P;
         ctx->pix_fmt = AV_PIX_FMT_YUV420P;
         ctx->max_b_frames = 0; // No B-frames for immediate output
+        ctx->profile = EncoderConfiguration::get_configuration(encoder).profile;
 
         // HIGH
         // if (ffmpeg.av_opt_set(ctx->priv_data, "tune", "zerolatency,stillimage", 0) != 0)
@@ -230,23 +239,6 @@ namespace rfb {
         // H.264 profile for better compression
         // if (ffmpeg.av_opt_set(ctx->priv_data, "profile", "high", 0) != 0)
         //     throw std::runtime_error("Could not set codec setting");
-
-        auto *sws_ctx = ffmpeg.sws_getContext(width,
-                                              height,
-                                              AV_PIX_FMT_RGB32,
-                                              current_params.width,
-                                              current_params.height,
-                                              ctx_guard->pix_fmt,
-                                              SWS_BILINEAR,
-                                              nullptr,
-                                              nullptr,
-                                              nullptr);
-        if (!sws_ctx) {
-            vlog.error("Could not initialize the conversion context");
-            return false;
-        }
-
-        sws_guard.reset(sws_ctx);
 
         auto *frame = frame_guard.get();
 

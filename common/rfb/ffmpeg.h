@@ -120,6 +120,8 @@ class FFmpeg final {
                                    int srcSliceH, uint8_t *const dst[], const int dstStride[]);
 
     // libavcodec
+    using avcodec_version_func = const unsigned (*) ();
+    using avcodec_configuration_func = const char *(*) ();
     using avcodec_free_context_func = void (*)(AVCodecContext **);
     using av_packet_free_func = void (*)(AVPacket **);
     using avcodec_find_encoder_func = const AVCodec *(*) (AVCodecID id);
@@ -137,6 +139,10 @@ class FFmpeg final {
     using avcodec_flush_buffers_func = void (*)(AVCodecContext *avctx);
     using avcodec_close_func = int (*)(AVCodecContext *avctx);
     using av_codec_is_encoder_func = int (*)(const AVCodec *codec);
+
+    // libavfilter
+    /*using avfilter_graph_parse_ptr_func = int (*)(AVFilterGraph *graph, const char *filters, AVFilterInOut **inputs,
+        AVFilterInOut **outputs, void *log_ctx);*/
 
     struct DlHandler {
         void operator()(void *handle) const {
@@ -178,6 +184,8 @@ class FFmpeg final {
     sws_scale_func sws_scale_f{};
 
     // libavcodec
+    static inline avcodec_version_func avcodec_version_f{};
+    static inline avcodec_configuration_func avcodec_configuration_f{};
     static inline avcodec_free_context_func avcodec_free_context_f{};
     static inline av_packet_free_func av_packet_free_f{};
     avcodec_find_encoder_func avcodec_find_encoder_f{};
@@ -196,10 +204,14 @@ class FFmpeg final {
     avcodec_close_func avcodec_close_f{};
     av_codec_is_encoder_func av_codec_is_encoder_f{};
 
+    // libavfilter
+    // avfilter_graph_parse_ptr_func avfilter_graph_parse_ptr_f{};
+
     DlHandlerGuard libavformat{};
     DlHandlerGuard libavutil{};
     DlHandlerGuard libswscale{};
     DlHandlerGuard libavcodec{};
+    DlHandlerGuard libavfilter{};
 
     FFmpeg();
     ~FFmpeg() = default;

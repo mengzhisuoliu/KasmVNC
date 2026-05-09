@@ -32,7 +32,6 @@ namespace rfb {
         FFmpeg::FrameGuard frame_guard;
         FFmpeg::PacketGuard pkt_guard;
         FFmpeg::ContextGuard ctx_guard;
-        FFmpeg::SwsContextGuard sws_guard;
 
         KasmVideoEncoders::Encoder encoder;
         VideoEncoderParams current_params{};
@@ -50,7 +49,7 @@ namespace rfb {
         bool isSupported() const override;
         void writeRect(const PixelBuffer *pb, const Palette &palette) override;
         void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
-        bool render(const PixelBuffer *pb) override;
+        bool render(const PixelBuffer *pb, bool forceKeyFrame = false) override;
         void writeSkipRect() override;
     };
 } // namespace rfb

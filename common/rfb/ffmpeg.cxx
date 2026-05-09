@@ -68,7 +68,7 @@ FFmpeg::FFmpeg() {
         av_seek_frame_f = D_LOOKUP_SYM(handle, av_seek_frame);
         avformat_close_input_f = D_LOOKUP_SYM(handle, avformat_close_input);
 
-        vlog.info("libavformat.so loaded");
+        vlog.debug("libavformat.so loaded");
 
         // libavutil
         libavutil = load_lib("libavutil.so");
@@ -92,7 +92,7 @@ FFmpeg::FFmpeg() {
         av_log_set_level_f = D_LOOKUP_SYM(handle, av_log_set_level);
         av_log_set_callback_f = D_LOOKUP_SYM(handle, av_log_set_callback);
 
-        vlog.info("libavutil.so loaded");
+        vlog.debug("libavutil.so loaded");
 
         // libswscale
         libswscale = load_lib("libswscale.so");
@@ -101,11 +101,14 @@ FFmpeg::FFmpeg() {
         sws_freeContext_f = D_LOOKUP_SYM(handle, sws_freeContext);
         sws_getContext_f = D_LOOKUP_SYM(handle, sws_getContext);
         sws_scale_f = D_LOOKUP_SYM(handle, sws_scale);
+        vlog.debug("libswscale.so loaded");
 
         // libavcodec
         libavcodec = load_lib("libavcodec.so");
         handle = libavcodec.get();
 
+        avcodec_version_f = D_LOOKUP_SYM(handle, avcodec_version);
+        avcodec_configuration_f = D_LOOKUP_SYM(handle, avcodec_configuration);
         avcodec_free_context_f = D_LOOKUP_SYM(handle, avcodec_free_context);
         avcodec_open2_f = D_LOOKUP_SYM(handle, avcodec_open2);
         avcodec_find_encoder_f = D_LOOKUP_SYM(handle, avcodec_find_encoder);
@@ -121,9 +124,16 @@ FFmpeg::FFmpeg() {
         av_codec_is_encoder_f = D_LOOKUP_SYM(handle, av_codec_is_encoder);
         av_packet_alloc_f = D_LOOKUP_SYM(handle, av_packet_alloc);
         av_packet_free_f = D_LOOKUP_SYM(handle, av_packet_free);
+        vlog.debug("libavcodec.so loaded");
 
         av_log_set_level_f(AV_LOG_VERBOSE); // control what is emitted
         av_log_set_callback_f(av_log_callback);
+
+        const auto ver = avcodec_version_f();
+        vlog.debug("libavcodec version: %d.%d.%d", AV_VERSION_MAJOR(ver), AV_VERSION_MINOR(ver), AV_VERSION_MICRO(ver));
+
+        const auto *config = avcodec_configuration_f();
+        vlog.debug("libavcodec configuration: %s", config);
 
         available = true;
     } catch (std::exception &e) {

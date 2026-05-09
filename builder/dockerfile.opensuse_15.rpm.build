@@ -21,6 +21,6 @@ COPY opensuse/kasmvncserver.spec /tmp
 RUN zypper -n install $(grep BuildRequires /tmp/*.spec | cut -d' ' -f2 | xargs)
 
 RUN groupadd -g 1000 docker && \
-  useradd -u 1000 -g docker docker
+  useradd -u 1000 -m -d /home/docker -g docker docker
 
 USER docker

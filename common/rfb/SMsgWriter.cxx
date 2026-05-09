@@ -284,6 +284,8 @@ bool SMsgWriter::needNoDataUpdate()
     return true;
   if (needExtendedDesktopSize || !extendedDesktopSizeMsgs.empty())
     return true;
+  if (needSetCursor || needSetXCursor || needSetCursorWithAlpha || needSetVMWareCursor)
+      return true;
 
   return false;
 }
@@ -774,7 +776,7 @@ void SMsgWriter::writeVideoEncoders(const std::vector<int32_t> &encoders) {
 
     std::vector<int32_t> conjunction;
 
-    for (const auto encoder: cp->available_encoders) {
+    for (const auto &[encoder, _]: cp->available_encoders) {
         if (std::find(encoders.begin(), encoders.end(), KasmVideoEncoders::to_streaming_mode(encoder)) != encoders.end()) {
             conjunction.push_back(KasmVideoEncoders::to_encoding(encoder));
         }
@@ -783,13 +785,13 @@ void SMsgWriter::writeVideoEncoders(const std::vector<int32_t> &encoders) {
     const uint8_t size = conjunction.size();
     os->writeU8(size);
 
-    for (auto encoder: conjunction) {
+    for (const auto encoder: conjunction) {
         os->writeS32(encoder);
 
         const auto &config = EncoderConfiguration::get_configuration(KasmVideoEncoders::from_encoding(encoder));
 
-        os->writeS32(config.min_quality);
-        os->writeS32(config.max_quality);
+        os->writeS32(config.allowed_quality.min);
+        os->writeS32(config.allowed_quality.max);
 
         os->writeU8(config.presets.size());
         for (const auto &preset_value: config.presets) {

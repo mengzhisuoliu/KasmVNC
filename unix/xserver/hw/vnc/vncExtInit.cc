@@ -47,7 +47,6 @@
 #include "XserverDesktop.h"
 #include "vncBlockHandler.h"
 #include "vncExtInit.h"
-#include <fmt/format.h>
 #include "vncHooks.h"
 #include "vncSelection.h"
 #include "xorg-version.h"
@@ -311,13 +310,18 @@ void vncExtensionInit(void)
         const char *codec_cli_arg = Server::videoCodec;
         if (codec_cli_arg[0]) {
             parsed_codecs = SupportedVideoEncoders::parse(codec_cli_arg);
-            for (auto codec: parsed_codecs) {
-                vlog.debug("CODEC:  %s" , std::string(codec).c_str()) ;
-                if (!SupportedVideoEncoders::is_supported(codec))
-                    throw std::invalid_argument(fmt::format("Unknown video codec: {}", codec));
-            }
+            std::erase_if(parsed_codecs, [](const auto &codec) {
+                const auto not_supported = !SupportedVideoEncoders::is_supported(codec);
+                if (not_supported) {
+                    std::string str{codec};
+                    vlog.info("Unknown codec %s skipped", str.c_str());
+                }
+                return not_supported;
+            });
         }
-        const auto &probe = video_encoders::EncoderProbe::get(FFmpeg::get(), parsed_codecs, Server::driNode.getData());
+
+        const char *dri_node = Server::driNode;
+        const auto &probe = video_encoders::EncoderProbe::get(FFmpeg::get(), parsed_codecs, dri_node && strlen(dri_node) > 0 ? dri_node : nullptr);
 
         vncSetGlueContext(scr);
         desktop[scr] = new XserverDesktop(scr,

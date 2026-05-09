@@ -72,7 +72,7 @@ set(RFB_SOURCES
         encoders/SoftwareEncoder.cxx
         benchmark/FfmpegFrameFeeder.cpp
         encoders/ScreenEncoderManager.cxx
-        encoders/FFMPEGVAAPIEncoder.cxx
+        encoders/FFMPEGHWEncoder.cxx
         encoders/ScreenEncoderManager.cxx
         encoders/VideoEncoderFactory.cxx
         encoders/EncoderProbe.cpp
@@ -152,6 +152,17 @@ else ()
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${TBB_LIBRARIES})
 endif ()
 
+find_library(LIBYUV_LIBRARY NAMES yuv)
+if (LIBYUV_LIBRARY)
+    set(RFB_LIBRARIES ${RFB_LIBRARIES} ${LIBYUV_LIBRARY})
+else ()
+    message(FATAL_ERROR "libyuv was not found")
+endif ()
+
+if (ENABLE_DEBUG_ENCODERS)
+    set(RFB_DEFINITIONS ${RFB_DEFINITIONS} DEBUG_ENCODERS)
+endif ()
+
 add_library(rfb STATIC ${RFB_SOURCES})
 
 target_include_directories(rfb PRIVATE
@@ -163,6 +174,7 @@ target_include_directories(rfb PRIVATE
         ${FFMPEG_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
         ${CPUID_INCLUDE_DIRS}
+        ${LIBYUV_INCLUDE_DIR}
 )
 
 set(RFB_LIBRARIES ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRARIES} ${FMT_LIBRARIES} ${VIDEO_ACCELERATION_LIBRARIES})
@@ -170,6 +182,8 @@ set(RFB_LIBRARIES ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRAR
 if (DEBUG_FFMPEG)
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${FFMPEG_LIBRARIES})
 endif ()
+
+target_compile_definitions(rfb PRIVATE ${RFB_DEFINITIONS})
 
 target_include_directories(rfb PUBLIC ${VIDEO_ACCELERATION_INCLUDE_DIRS})
 target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES})

@@ -73,6 +73,11 @@ namespace rfb {
         static_assert(
             MappedCodecs.size() == static_cast<size_t>(Codecs::unavailable) + 1, "MappedCodecs array size must match Codecs enum count");
 
+        // Compile-time check: Encoder must match Codec enum count (excluding unavailable)
+        static_assert(static_cast<size_t>(KasmVideoEncoders::Encoder::unavailable) + 4 == static_cast<size_t>(SupportedVideoEncoders::Codecs::unavailable),
+            "Encoder enum count must match SupportedVideoEncoders::Codecs enum count - 4.");
+
+
         static inline auto CodecNames = std::to_array<std::string_view>({"h264",
             "h264_vaapi",
             "h264_nvenc",
@@ -182,13 +187,13 @@ namespace rfb {
             return result;
         }
 
-        static KasmVideoEncoders::Encoders filter_available_encoders(
-            const KasmVideoEncoders::Encoders &encoders, const KasmVideoEncoders::Encoders &available) {
-            KasmVideoEncoders::Encoders result;
+        static KasmVideoEncoders::EncoderConfigs filter_available_encoders(
+            const KasmVideoEncoders::Encoders &encoders, const KasmVideoEncoders::EncoderConfigs &available) {
+            KasmVideoEncoders::EncoderConfigs result;
 
-            for (auto encoder: available) {
-                if (std::ranges::find(encoders.begin(), encoders.end(), encoder) != encoders.end())
-                    result.push_back(encoder);
+            for (const auto &encoder_config: available) {
+                if (std::ranges::find(encoders.begin(), encoders.end(), encoder_config.encoder) != encoders.end())
+                    result.push_back(encoder_config);
             }
 
             return result;

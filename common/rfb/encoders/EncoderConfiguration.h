@@ -32,12 +32,18 @@ namespace rfb {
             std::variant<rdr::S32, std::string> value;
         };
 
+        struct Range {
+            rdr::S32 min{};
+            rdr::S32 max{};
+        };
+
         static constexpr uint8_t MAX_PRESETS = 5;
-        rdr::S32 min_quality{};
-        rdr::S32 max_quality{};
+        Range quality{};
+        Range allowed_quality{};
 
         // std::vector<CodecOption> codecOptions{};
         std::array<rdr::S32, MAX_PRESETS> presets{};
+        rdr::S32 profile{};
 
         static const EncoderConfiguration &get_configuration(KasmVideoEncoders::Encoder encoder);
     };

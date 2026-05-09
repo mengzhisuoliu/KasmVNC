@@ -41,7 +41,7 @@ namespace rfb {
     public:
         VideoEncoder(Id id, SConnection *conn) :
             Encoder(id, conn, encodingKasmVideo, static_cast<EncoderFlags>(EncoderUseNativePF | EncoderLossy), -1) {}
-        virtual bool render(const PixelBuffer *pb) = 0;
+        virtual bool render(const PixelBuffer *pb, bool forceKeyFrame = false) = 0;
         virtual void writeSkipRect() = 0;
         ~VideoEncoder() override = default;
     };

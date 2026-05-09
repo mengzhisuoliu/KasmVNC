@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+LIBYUV_REPO="https://chromium.googlesource.com/libyuv/libyuv"
+LIBYUV_SRC_DIR="/tmp/libyuv"
+
+prepare_source() {
+  [ -d "$LIBYUV_SRC_DIR" ] && rm -rf "$LIBYUV_SRC_DIR"
+
+  git clone \
+    --branch stable \
+    --depth 1 \
+    "$LIBYUV_REPO" \
+    "$LIBYUV_SRC_DIR"
+
+  cd "$LIBYUV_SRC_DIR"
+}
+
+build_and_install() {
+  export MAKEFLAGS=-j$(nproc)
+
+  # Disable problematic NEON64 assembly for ARM64
+  if [ "$(uname -m)" = "aarch64" ]; then
+    EXTRA_CXXFLAGS="-DLIBYUV_DISABLE_NEON"
+  else
+    EXTRA_CXXFLAGS=""
+  fi
+
+  cp -r include/ /usr/
+  make V=1 -f linux.mk CFLAGS="-O2 -fomit-frame-pointer -fPIC" CXXFLAGS="-O2 -fomit-frame-pointer -fPIC $EXTRA_CXXFLAGS"
+
+  install -D -m 0644 libyuv.a /usr/lib/libyuv.a
+}
+
+prepare_source
+build_and_install

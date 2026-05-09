@@ -35,6 +35,12 @@
 #include "regionstr.h"
 #include "dixfontstr.h"
 #include "colormapst.h"
+
+#ifdef DAMAGE
+#include "damage.h"
+#include "damagestr.h"
+#endif
+
 #ifdef RENDER
 #include "picturestr.h"
 #endif
@@ -79,6 +85,10 @@ typedef struct _vncHooksScreenRec {
   TriStripProcPtr              TriStrip;
   TriFanProcPtr                TriFan;
 #endif
+#endif
+
+#ifdef DAMAGE
+    DamagePtr                  Damage;
 #endif
   RRSetConfigProcPtr           rrSetConfig;
   RRScreenSetSizeProcPtr       rrScreenSetSize;
@@ -265,7 +275,10 @@ static GCOps vncHooksGCOps = {
   vncHooksImageGlyphBlt, vncHooksPolyGlyphBlt, vncHooksPushPixels
 };
 
-
+#ifdef DAMAGE
+static void vncHooksDamageReport(DamagePtr pDamage, RegionPtr pRegion, void *closure);
+static void vncHooksDamageDestroy(DamagePtr pDamage, void *closure);
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 // vncHooksInit() is called at initialisation time and every time the server
@@ -316,6 +329,41 @@ int vncHooksInit(int scrIdx)
   vncHooksScreen = vncHooksScreenPrivate(pScreen);
 
   vncHooksScreen->ignoreHooks = 0;
+
+#ifdef DAMAGE1
+    // Create damage object to track screen changes
+    vncHooksScreen->Damage = DamageCreate(vncHooksDamageReport,
+                                          vncHooksDamageDestroy,
+                                          DamageReportNonEmpty,
+                                          FALSE,
+                                          pScreen,
+                                          pScreen);
+
+    if (vncHooksScreen->Damage) {
+/*
+        *    PixmapPtr pPixmap = pScreen->GetScreenPixmap(pScreen);
+
+            if (pPixmap) {
+              // Register damage tracking for the screen pixmap (not root window)
+              DamageRegister(&pPixmap->drawable, vncHooksScreen->damage);
+
+              // Report damage after operations complete, not during
+              DamageSetReportAfterOp(vncHooksScreen->damage, TRUE);
+
+              vncHooksScreen->damageEnabled = TRUE;
+ */
+
+        // Register damage tracking for the root window
+        DamageRegister(&pScreen->root->drawable, vncHooksScreen->Damage);
+        DamageSetReportAfterOp(vncHooksScreen->Damage, TRUE);
+
+        ErrorF("VNC: XDamage extension enabled for screen %d\n", scrIdx);
+    } else {
+        DamageDestroy(vncHooksScreen->Damage);
+        vncHooksScreen->Damage = NULL;
+        ErrorF("VNC: Failed to create damage object, falling back to hooks\n");
+    }
+#endif
 
   wrap(vncHooksScreen, pScreen, CloseScreen, vncHooksCloseScreen);
   wrap(vncHooksScreen, pScreen, CreateGC, vncHooksCreateGC);
@@ -400,6 +448,14 @@ static inline void add_changed(ScreenPtr pScreen, RegionPtr reg)
   vncHooksScreenPtr vncHooksScreen = vncHooksScreenPrivate(pScreen);
   if (vncHooksScreen->ignoreHooks)
     return;
+
+#ifdef DAMAGE
+    // If XDamage is handling updates, skip manual tracking for most operations
+    // Still track for operations XDamage might miss (like cursor changes)
+    if (vncHooksScreen->Damage)
+        return;
+#endif
+
   if (RegionNil(reg))
     return;
   vncAddChanged(pScreen->myNum,
@@ -449,6 +505,29 @@ static inline Bool is_visible(DrawablePtr drawable)
 
   return TRUE;
 }
+
+#ifdef DAMAGE
+static void vncHooksDamageReport(DamagePtr pDamage, RegionPtr pRegion, void *closure) {
+    puts("Damage reported\n");
+    ScreenPtr pScreen = (ScreenPtr) closure;
+    vncHooksScreenPtr vncHooksScreen = vncHooksScreenPrivate(pScreen);
+
+    if (vncHooksScreen->ignoreHooks)
+        return;
+
+    // Report the damage to VNC
+    if (!RegionNil(pRegion)) {
+        vncAddChanged(pScreen->myNum,
+            (const struct UpdateRect *) RegionExtents(pRegion),
+            RegionNumRects(pRegion),
+            (const struct UpdateRect *) RegionRects(pRegion));
+    }
+}
+
+static void vncHooksDamageDestroy(DamagePtr pDamage, void *closure) {
+    // Cleanup if needed
+}
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -511,6 +590,14 @@ static Bool vncHooksCloseScreen(ScreenPtr pScreen_)
     unwrap(vncHooksScreen, rp, rrScreenSetSize);
     unwrap(vncHooksScreen, rp, rrCrtcSet);
   }
+
+#ifdef DAMAGE
+    if (vncHooksScreen->Damage) {
+        DamageUnregister(vncHooksScreen->Damage);
+        DamageDestroy(vncHooksScreen->Damage);
+        vncHooksScreen->Damage = NULL;
+    }
+#endif
 
   DBGPRINT((stderr,"vncHooksCloseScreen: unwrapped screen functions\n"));
 

@@ -20,10 +20,7 @@
 #define __NETWORK_GET_API_H__
 
 #include <kasmpasswd.h>
-#include <pthread.h>
-#include <network/GetAPIEnums.h>
 #include <rfb/PixelBuffer.h>
-#include <rfb/PixelFormat.h>
 #include <stdint.h>
 #include <map>
 #include <string>
@@ -44,7 +41,7 @@ namespace network {
                                     uint32_t jpeg, uint32_t webp, uint32_t analysis,
                                     uint32_t jpegarea, uint32_t webparea,
                                     uint16_t njpeg, uint16_t nwebp,
-                                    uint16_t enc, uint16_t scale, uint16_t shot,
+                                    uint16_t enc, uint16_t scale,
                                     uint16_t w, uint16_t h);
     void mainUpdateClientFrameStats(const char userid[], uint32_t render, uint32_t all,
                                     uint32_t ping);

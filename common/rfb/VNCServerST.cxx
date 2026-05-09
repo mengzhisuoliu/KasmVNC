@@ -143,7 +143,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
     renderedCursorInvalid(false),
     queryConnectionHandler(nullptr), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(nullptr), trackingFrameStats(0),
+    frameTimer(this), screenshotTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false), encoder_probe(encoder_probe_)
 {
     auto to_string = [](const bool value) {
@@ -159,7 +159,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
               to_string(cpu_info::has_avx512f));
 
     std::string available_accelerators{};
-    for (const auto encoder: encoder_probe.get_available_encoders()) {
+    for (const auto &[encoder, _]: encoder_probe.get_available_encoders()) {
         if (KasmVideoEncoders::is_accelerated(encoder)) {
             if (!available_accelerators.empty())
                 available_accelerators.append(", ");
@@ -263,6 +263,8 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
             throw std::invalid_argument("Benchmarking video file does not exist");
         benchmark(file_name, Server::benchmarkResults.getValueStr());
     }
+
+    screenshotTimer.start(FIRST_SCREENSHOT_INTERVAL_MS);
 }
 
 VNCServerST::~VNCServerST()
@@ -518,6 +520,8 @@ void VNCServerST::setPixelBuffer(PixelBuffer* pb_, const ScreenSet& layout)
     // Since the new pixel buffer means an ExtendedDesktopSize needs to
     // be sent anyway, we don't need to call screenLayoutChange.
   }
+
+  updateScreenshot = true;
 }
 
 void VNCServerST::setPixelBuffer(PixelBuffer* pb_)
@@ -763,6 +767,20 @@ bool VNCServerST::handleTimeout(Timer* t)
 
     return true;
   }
+
+    if (t == &screenshotTimer) {
+        if (apimessager) {
+            apimessager->mainUpdateScreen(getPixelBuffer());
+        }
+
+        if (screenshotTimer.getTimeoutMs() < SCREENSHOT_INTERVAL_MS) {
+            screenshotTimer.start(SCREENSHOT_INTERVAL_MS);
+
+            return false;
+        }
+
+        return true;
+    }
 
   return false;
 }
@@ -1024,15 +1042,11 @@ void VNCServerST::blackOut()
 void VNCServerST::writeUpdate()
 {
   UpdateInfo ui;
-  Region toCheck;
-
-  std::list<VNCSConnectionST*>::iterator ci, ci_next;
 
   assert(blockCounter == 0);
   assert(desktopStarted);
 
-  struct timeval start;
-  gettimeofday(&start, NULL);
+  TRACE_STOPWATCH(start);
 
   if (DLPRegion.enabled) {
     comparer->enable_copyrect(false);
@@ -1044,8 +1058,13 @@ void VNCServerST::writeUpdate()
     sendWatermark = true;
   }
 
+  bool video_streaming_enabled = true;
+  for (auto client : clients) {
+      video_streaming_enabled &= client->cp.encoder_config.encoder != KasmVideoEncoders::Encoder::unavailable;
+  }
+
   comparer->getUpdateInfo(&ui, pb->getRect());
-  toCheck = ui.changed.union_(ui.copied);
+  Region toCheck = ui.changed.union_(ui.copied);
 
   Region cursorReg;
   if (needRenderedCursor()) {
@@ -1065,22 +1084,22 @@ void VNCServerST::writeUpdate()
   else
     comparer->disable();
 
-  struct timeval beforeAnalysis;
-  gettimeofday(&beforeAnalysis, NULL);
-
+  TRACE_STOPWATCH(beforeAnalysis);
+  DEBUG_STOPWATCH(comparer_timer);
   // Skip scroll detection if the client is slow, and didn't get the previous one yet
-  if (comparer->compare(clients.size() == 1 && (*clients.begin())->has_copypassed(),
+  if (!video_streaming_enabled && comparer->compare(clients.size() == 1 && (*clients.begin())->has_copypassed(),
                         cursorReg))
     comparer->getUpdateInfo(&ui, pb->getRect());
 
   comparer->clear();
-
-  const unsigned analysisMs = msSince(&beforeAnalysis);
+  DEBUG_STOPWATCH_PRINT_US(slog, comparer_timer);
+  TRACE_STOPWATCH_END_MS(beforeAnalysis, analysisMs);
 
   encCache.clear();
   encCache.enabled = clients.size() > 1;
 
   // Check if the password file was updated
+  DEBUG_STOPWATCH(perm_check);
   bool permcheck = false;
   if (inotify_fd >= 0) {
     char buf[256];
@@ -1102,59 +1121,54 @@ void VNCServerST::writeUpdate()
     }
   }
 
-  unsigned shottime = 0;
+  DEBUG_STOPWATCH_PRINT_US(slog, perm_check);
   if (apimessager) {
-    struct timeval shotstart;
-    gettimeofday(&shotstart, NULL);
-    apimessager->mainUpdateScreen(pb);
-    shottime = msSince(&shotstart);
-
+      if (updateScreenshot) {
+          apimessager->mainUpdateScreen(pb);
+          updateScreenshot = false;
+      }
     trackingFrameStats = 0;
     checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
   const rdr::U8 origtrackingFrameStats = trackingFrameStats;
 
-  EncodeManager::codecstats_t jpegstats, webpstats;
+  EncodeManager::codecstats_t jpegstats{}, webpstats{};
   unsigned enctime = 0, scaletime = 0;
-  memset(&jpegstats, 0, sizeof(EncodeManager::codecstats_t));
-  memset(&webpstats, 0, sizeof(EncodeManager::codecstats_t));
 
   if (watermarkData)
       updateWatermark();
 
-  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
-    ci_next = ci; ci_next++;
-
+  for (auto client : clients) {
     if (permcheck)
-      (*ci)->recheckPerms();
+      client->recheckPerms();
 
     if (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_ALL ||
         (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_OWNER &&
-         (*ci)->is_owner()) ||
+         client->is_owner()) ||
         (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_SPECIFIC &&
-         strstr((*ci)->getPeerEndpoint(), trackingClient))) {
+         strstr(client->getPeerEndpoint(), trackingClient))) {
 
-      (*ci)->setFrameTracking();
+      client->setFrameTracking();
 
       // Only one owner
       if (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_OWNER)
         trackingFrameStats = network::GetAPIMessager::WANT_FRAME_STATS_SERVERONLY;
     }
 
-    (*ci)->add_copied(ui.copied, ui.copy_delta);
-    (*ci)->add_copypassed(ui.copypassed);
-    (*ci)->add_changed(ui.changed);
-    (*ci)->writeFramebufferUpdateOrClose();
+    client->add_copied(ui.copied, ui.copy_delta);
+    client->add_copypassed(ui.copypassed);
+    client->add_changed(ui.changed);
+    client->writeFramebufferUpdateOrClose();
 
-    if (((network::UdpStream *)(*ci)->getOutStream(true))->isFailed()) {
-      ((network::UdpStream *)(*ci)->getOutStream(true))->clearFailed();
-      (*ci)->udpDowngrade(true);
+    if (((network::UdpStream *)client->getOutStream(true))->isFailed()) {
+      ((network::UdpStream *)client->getOutStream(true))->clearFailed();
+      client->udpDowngrade(true);
     }
 
     if (apimessager) {
-      (*ci)->sendStats(false);
-      const EncodeManager::codecstats_t subjpeg = (*ci)->getJpegStats();
-      const EncodeManager::codecstats_t subwebp = (*ci)->getWebpStats();
+      client->sendStats(false);
+      const EncodeManager::codecstats_t subjpeg = client->getJpegStats();
+      const EncodeManager::codecstats_t subwebp = client->getWebpStats();
 
       jpegstats.ms += subjpeg.ms;
       jpegstats.area += subjpeg.area;
@@ -1164,8 +1178,8 @@ void VNCServerST::writeUpdate()
       webpstats.area += subwebp.area;
       webpstats.rects += subwebp.rects;
 
-      enctime += (*ci)->getEncodingTime();
-      scaletime += (*ci)->getScalingTime();
+      enctime += client->getEncodingTime();
+      scaletime += client->getScalingTime();
     }
   }
 
@@ -1181,7 +1195,7 @@ void VNCServerST::writeUpdate()
                                                 analysisMs,
                                                 jpegstats.area, webpstats.area,
                                                 jpegstats.rects, webpstats.rects,
-                                                enctime, scaletime, shottime,
+                                                enctime, scaletime,
                                                 pb->getRect().width(),
                                                 pb->getRect().height());
     } else {
@@ -1365,13 +1379,13 @@ void VNCServerST::notifyUserAction(const VNCSConnectionST* newConnection, std::s
         }
         notificationsSent++;
 
-        slog.debug(msgNotification.c_str());
+        slog.debug("%s", msgNotification.c_str());
       } catch (rdr::Exception& e) {
          errNotification.append( e.str());
-        slog.error(errNotification.c_str());
+        slog.error("%s", errNotification.c_str());
       }
         }
   }
   logNotification.append( std::to_string(notificationsSent) + " clients");
-  slog.info(logNotification.c_str());
+  slog.info("%s", logNotification.c_str());
 }

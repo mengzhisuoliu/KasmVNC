@@ -31,6 +31,7 @@
 #include <rfb/util.h>
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 
 using namespace rfb;
 
@@ -331,9 +332,10 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     }
 
     if (encodings[i] >= pseudoEncodingFrameRateLevel10 && encodings[i] <= pseudoEncodingFrameRateLevel60) {
+        const auto new_frame_rate = encodings[i] - pseudoEncodingFrameRateLevel10 + 10;
         if (can_apply)
-            Server::frameRate.setParam(encodings[i] - pseudoEncodingFrameRateLevel10 + 10);
-        clientparlog("frameRate", encodings[i] - pseudoEncodingFrameRateLevel10 + 10, can_apply);
+            Server::frameRate.setParam(new_frame_rate);
+        clientparlog("frameRate", new_frame_rate, can_apply);
     }
 
     if (encodings[i] >= pseudoEncodingVideoScalingLevel0 && encodings[i] <= pseudoEncodingVideoScalingLevel9) {
@@ -357,16 +359,24 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     }
 
     if (encodings[i] >= pseudoEncodingStreamingVideoQualityLevel0 && encodings[i] <= pseudoEncodingStreamingVideoQualityLevel63) {
-        const auto &config = EncoderConfiguration::get_configuration(encoder);
-        const auto value = config.max_quality - encodings[i] + pseudoEncodingStreamingVideoQualityLevel0;
+        const auto &config = EncoderConfiguration::get_configuration(encoder_config.encoder);
+        const auto value = config.quality.max - encodings[i] + pseudoEncodingStreamingVideoQualityLevel0;
         if (can_apply)
             Server::videoQualityCRFCQP.setParam(value);
         clientparlog("videoQualityCRFCQP", value, can_apply);
     }
 
-    if (encodings[i] >=pseudoEncodingStreamingModeAV1QSV && encodings[i] <= pseudoEncodingStreamingModeJpegWebp) {
-        if (can_apply)
-            encoder = KasmVideoEncoders::from_encoding(encodings[i]);
+    if (encodings[i] >= pseudoEncodingStreamingModeAV1QSV && encodings[i] <= pseudoEncodingStreamingModeJpegWebp) {
+        if (can_apply) {
+            const auto encoder = KasmVideoEncoders::from_encoding(encodings[i]);
+            auto iter = std::find_if(available_encoders.begin(),
+                available_encoders.end(),
+                [encoder](const KasmVideoEncoders::EncoderConfig &config) { return config.encoder == encoder; });
+            if (iter != available_encoders.end())
+                encoder_config = *iter;
+            else
+                encoder_config = KasmVideoEncoders::EncoderConfig{encoder};
+        }
         clientparlog("Encoder", encodings[i], can_apply);
     }
 
