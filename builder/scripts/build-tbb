@@ -43,8 +43,8 @@ prepare_source() {
     fi
 
     curl -Ls "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
+        tar xzvf - -C ${DIR}/ --strip-components=1
 
-    tar xzvf - -C ${DIR}/ --strip-components=1
     cd ${DIR}
 }
 
