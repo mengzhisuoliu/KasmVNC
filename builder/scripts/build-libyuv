@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -ex pipefail
 
 LIBYUV_REPO="https://chromium.googlesource.com/libyuv/libyuv"
 LIBYUV_SRC_DIR="/tmp/libyuv"
@@ -8,8 +8,9 @@ LIBYUV_SRC_DIR="/tmp/libyuv"
 prepare_source() {
   [ -d "$LIBYUV_SRC_DIR" ] && rm -rf "$LIBYUV_SRC_DIR"
 
+  LIBYUV_BRANCH="${LIBYUV_BRANCH:-stable}"
   git clone \
-    --branch stable \
+    --branch "$LIBYUV_BRANCH" \
     --depth 1 \
     "$LIBYUV_REPO" \
     "$LIBYUV_SRC_DIR"
