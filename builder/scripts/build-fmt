@@ -15,8 +15,6 @@ prepare_source() {
     [ -d ./${DIR} ] && rm -rf ./${DIR}
     mkdir ${DIR}
 
-    #  LIBCPUID_RELEASE=$(curl -sL "https://api.github.com/repos/fmtlib/fmt/releases/latest" \
-    #        | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
     FMT_RELEASE="${FMT_RELEASE:-12.2.0}"
 
     curl -Ls "https://github.com/fmtlib/fmt/archive/${FMT_RELEASE}.tar.gz" | \
