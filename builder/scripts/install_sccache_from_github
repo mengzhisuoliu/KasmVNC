@@ -32,6 +32,6 @@ cleanup_download() {
   rm -r sccache*
 }
 
-sccache_version="v0.14.0"
+sccache_version="v0.16.0"
 fetch_sccache_and_put_into_user_local_bin
 cleanup_download
