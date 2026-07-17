@@ -3,7 +3,11 @@ FROM opensuse/leap:16.0
 ENV KASMVNC_BUILD_OS opensuse
 ENV KASMVNC_BUILD_OS_CODENAME 16
 
-RUN zypper -n install -y \
+RUN sed -i 's|cdn.opensuse.org|downloadcontent.opensuse.org|g' \
+      /etc/zypp/repos.d/*.repo \
+      /usr/share/zypp/local/service/openSUSE/repo/*.xml && \
+  zypper refresh && \
+  zypper -n install -y \
   gpg* \
   less \
   lsb-release \

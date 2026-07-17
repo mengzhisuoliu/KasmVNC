@@ -5,7 +5,11 @@ ENV KASMVNC_BUILD_OS_CODENAME 16
 ENV XORG_VER 21.1.15
 
 # Install depends
-RUN zypper install -ny \
+RUN sed -i 's|cdn.opensuse.org|downloadcontent.opensuse.org|g' \
+      /etc/zypp/repos.d/*.repo \
+      /usr/share/zypp/local/service/openSUSE/repo/*.xml && \
+  zypper refresh && \
+  zypper install -ny \
   bdftopcf \
   ninja \
   nasm \
